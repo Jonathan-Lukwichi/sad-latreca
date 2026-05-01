@@ -1,0 +1,37 @@
+{
+  "_description": "Parametres NOMINAUX du constructeur pour la trefileuse 9 passes LATRECA. Sert de reference de comparaison avec l'etat actuel.",
+  "_source": "A renseigner apres recuperation de la fiche de garantie constructeur lors de la visite LATRECA",
+
+  "machine": {
+    "marque": "A renseigner",
+    "modele": "A renseigner",
+    "annee_mise_en_service": "A renseigner",
+    "n_passes": 9
+  },
+
+  "geometrie": {
+    "d_0_mm": 8.0,
+    "d_f_mm": 2.0,
+    "alphas_deg": [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0],
+    "type_filieres": "WC-Co (passes 1-6) + PCD (passes 7-9)"
+  },
+
+  "operationnel": {
+    "v_f_max_m_s": 25.0,
+    "v_f_nominale_m_s": 20.0,
+    "P_moteur_nominal_kW": 300.0,
+    "T_shift_h": 8.0,
+    "eta_OEE_nominal": 0.85
+  },
+
+  "lubrification": {
+    "type_recommande": "savon_calcique",
+    "frequence_remplacement_recommandee_mois": 1
+  },
+
+  "performance_nominale": {
+    "production_t_jour": 25.0,
+    "SEC_kWh_t": 250.0,
+    "duree_vie_filieres_h": 800
+  }
+}

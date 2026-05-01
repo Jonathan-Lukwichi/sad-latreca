@@ -1,0 +1,42 @@
+{
+  "_description": "Parametres ACTUELS mesures sur la trefileuse 9 passes LATRECA. A completer apres la visite sur site.",
+  "_source": "Visite de collecte de donnees - utiliser FICHE_COLLECTE_LATRECA.docx",
+
+  "machine": {
+    "marque": "A renseigner sur site",
+    "modele": "A renseigner sur site",
+    "annee_mise_en_service": "A renseigner",
+    "n_passes": 9,
+    "annees_de_service": "A renseigner"
+  },
+
+  "geometrie": {
+    "d_0_mm": 8.0,
+    "d_f_mm": 2.0,
+    "alphas_deg": [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
+    "_note_alphas": "Valeurs estimees - a mesurer precisement sur site"
+  },
+
+  "operationnel": {
+    "v_f_actuelle_m_s": 12.0,
+    "P_moteur_consommee_kW": "A mesurer",
+    "T_shift_h": 8.0,
+    "n_postes_jour": 2,
+    "n_jours_semaine": 5,
+    "eta_OEE_estime": 0.65
+  },
+
+  "lubrification": {
+    "type_actuel": "savon_calcique",
+    "age_lubrifiant_jours_actuel": 60,
+    "frequence_remplacement_actuelle_mois": 2,
+    "_note": "A confirmer sur site"
+  },
+
+  "performance_actuelle": {
+    "production_t_jour": 18.0,
+    "SEC_kWh_t": 320.0,
+    "duree_vie_filieres_h_estimee": 500,
+    "taux_rebut_pourcent": 5.0
+  }
+}

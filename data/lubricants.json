@@ -1,0 +1,61 @@
+{
+  "_description": "Base de donnees de 4 lubrifiants pour le tref ilage du cuivre ETP. Parametres CTTD calibres a partir de la litterature.",
+  "_unites": {
+    "mu_0": "adimensionnel",
+    "beta": "adimensionnel (sensibilite Arrhenius thermique)",
+    "gamma": "adimensionnel (taux vieillissement)",
+    "Q_lub": "J/mol (energie d'activation degradation)"
+  },
+
+  "savon_calcique": {
+    "nom": "Savon calcique (reference industrielle)",
+    "type": "Savon sec",
+    "mu_0": 0.060,
+    "beta": 0.30,
+    "gamma": 1.5e-6,
+    "Q_lub": 65000.0,
+    "duree_vie_jours_estimee": 30,
+    "cout_USD_kg": 5.0,
+    "disponibilite_RDC": "Tres bonne",
+    "source": "Wright (2024), Metalube UK (2024)"
+  },
+
+  "savon_sodique": {
+    "nom": "Savon sodique ameliore",
+    "type": "Savon sec ameliore",
+    "mu_0": 0.050,
+    "beta": 0.28,
+    "gamma": 1.2e-6,
+    "Q_lub": 70000.0,
+    "duree_vie_jours_estimee": 45,
+    "cout_USD_kg": 7.0,
+    "disponibilite_RDC": "Bonne",
+    "source": "Pates (2025), Metalube UK (2024)"
+  },
+
+  "huile_synthetique": {
+    "nom": "Huile synthetique (PAO/Ester)",
+    "type": "Huile synthetique",
+    "mu_0": 0.040,
+    "beta": 0.20,
+    "gamma": 8e-7,
+    "Q_lub": 80000.0,
+    "duree_vie_jours_estimee": 90,
+    "cout_USD_kg": 15.0,
+    "disponibilite_RDC": "Moyenne",
+    "source": "Lubricool 955 (2025), Multidraw CU SY (2024)"
+  },
+
+  "nano_graphene": {
+    "nom": "Nano-lubrifiant au graphene modifie",
+    "type": "Nano-additif",
+    "mu_0": 0.030,
+    "beta": 0.18,
+    "gamma": 5e-7,
+    "Q_lub": 90000.0,
+    "duree_vie_jours_estimee": 180,
+    "cout_USD_kg": 50.0,
+    "disponibilite_RDC": "Faible (a importer)",
+    "source": "Wang et al. (2025), Wu (2025), Lang et al. (2025)"
+  }
+}
