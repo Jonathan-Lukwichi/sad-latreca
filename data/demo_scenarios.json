@@ -1,0 +1,213 @@
+{
+  "_description": "Donnees de demonstration pour la soutenance. 4 scenarios A/B/C/D montrant l'evolution depuis l'etat actuel de LATRECA vers la cible optimisee. Valeurs calibrees a partir de la litterature (Wright 2024, Pates 2025, Avitzur 1968, Kim 2010).",
+  "_usage": "Charger via le bouton 'Charger un scenario demo' sur la page /config",
+  "_unites_valeurs_calculees": {
+    "ε_cum": "deformation cumulee (sans dimension)",
+    "σ_y": "MPa - contrainte d'ecoulement Hollomon",
+    "σ_d": "MPa - contrainte de trefilage Avitzur",
+    "ratio_securite": "σ_d / σ_y (limite admissible 0.6)",
+    "T_C": "°C - temperature en sortie de passe (apres refroidissement intermediaire)",
+    "mu": "coefficient de frottement effectif CTTD",
+    "F_kN": "kN - force de trefilage par passe"
+  },
+
+  "scenario_A_etat_actuel": {
+    "nom": "Cas A - Etat actuel LATRECA (juin 2025)",
+    "description": "Configuration mesuree lors de la visite sur site. Sous-performance generalisee.",
+    "couleur_demo": "#E8866C",
+    "configuration": {
+      "v_f_m_s": 12.0,
+      "alphas_deg": [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
+      "lubrifiant": "savon_calcique",
+      "age_lubrifiant_jours": 60,
+      "T_ambient_C": 28.0,
+      "OEE": 0.65
+    },
+    "pass_schedule": {
+      "passe_1": {"d_in_mm": 8.00, "d_out_mm": 7.00, "epsilon_i": 0.267, "epsilon_cum": 0.267, "sigma_y_MPa": 173, "sigma_d_MPa":  92, "ratio": 0.53, "delta_T_C": 12, "T_C":  37, "mu": 0.061, "F_kN":  3.5},
+      "passe_2": {"d_in_mm": 7.00, "d_out_mm": 6.10, "epsilon_i": 0.275, "epsilon_cum": 0.542, "sigma_y_MPa": 247, "sigma_d_MPa": 132, "ratio": 0.53, "delta_T_C": 14, "T_C":  44, "mu": 0.062, "F_kN":  3.9},
+      "passe_3": {"d_in_mm": 6.10, "d_out_mm": 5.30, "epsilon_i": 0.281, "epsilon_cum": 0.823, "sigma_y_MPa": 304, "sigma_d_MPa": 162, "ratio": 0.53, "delta_T_C": 16, "T_C":  53, "mu": 0.063, "F_kN":  3.6},
+      "passe_4": {"d_in_mm": 5.30, "d_out_mm": 4.60, "epsilon_i": 0.284, "epsilon_cum": 1.107, "sigma_y_MPa": 352, "sigma_d_MPa": 187, "ratio": 0.53, "delta_T_C": 17, "T_C":  63, "mu": 0.064, "F_kN":  3.1},
+      "passe_5": {"d_in_mm": 4.60, "d_out_mm": 4.00, "epsilon_i": 0.279, "epsilon_cum": 1.386, "sigma_y_MPa": 394, "sigma_d_MPa": 209, "ratio": 0.53, "delta_T_C": 18, "T_C":  74, "mu": 0.066, "F_kN":  2.6},
+      "passe_6": {"d_in_mm": 4.00, "d_out_mm": 3.40, "epsilon_i": 0.325, "epsilon_cum": 1.711, "sigma_y_MPa": 438, "sigma_d_MPa": 246, "ratio": 0.56, "delta_T_C": 19, "T_C":  86, "mu": 0.068, "F_kN":  2.2},
+      "passe_7": {"d_in_mm": 3.40, "d_out_mm": 2.90, "epsilon_i": 0.318, "epsilon_cum": 2.029, "sigma_y_MPa": 477, "sigma_d_MPa": 274, "ratio": 0.57, "delta_T_C": 20, "T_C":  99, "mu": 0.071, "F_kN":  1.8},
+      "passe_8": {"d_in_mm": 2.90, "d_out_mm": 2.40, "epsilon_i": 0.378, "epsilon_cum": 2.407, "sigma_y_MPa": 520, "sigma_d_MPa": 312, "ratio": 0.60, "delta_T_C": 21, "T_C": 113, "mu": 0.074, "F_kN":  1.4, "alerte": "Limite securite mecanique atteinte"},
+      "passe_9": {"d_in_mm": 2.40, "d_out_mm": 2.00, "epsilon_i": 0.365, "epsilon_cum": 2.772, "sigma_y_MPa": 558, "sigma_d_MPa": 348, "ratio": 0.62, "delta_T_C": 22, "T_C": 128, "mu": 0.078, "F_kN":  1.1, "alerte": "DEPASSEMENT C1 + proximite seuil thermique 140°C"}
+    },
+    "indicateurs_globaux": {
+      "production_t_jour": 18.0,
+      "SEC_kWh_t": 320.0,
+      "T_max_C": 128.0,
+      "ratio_max": 0.62,
+      "mu_max": 0.078,
+      "duree_vie_filieres_h": 500,
+      "duree_vie_lubrifiant_jours": 30,
+      "taux_rebut_pct": 5.0,
+      "verdict": "NON CONFORME - 2 contraintes violees (C1 mecanique, marge thermique)"
+    }
+  },
+
+  "scenario_B_quick_win": {
+    "nom": "Cas B - Quick win : passage savon sodique",
+    "description": "Migration immediate du lubrifiant. Aucun changement mecanique. Deployable en 1 semaine.",
+    "couleur_demo": "#F2CB05",
+    "configuration": {
+      "v_f_m_s": 14.0,
+      "alphas_deg": [7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0],
+      "lubrifiant": "savon_sodique",
+      "age_lubrifiant_jours": 15,
+      "T_ambient_C": 28.0,
+      "OEE": 0.72
+    },
+    "indicateurs_globaux": {
+      "production_t_jour": 21.5,
+      "SEC_kWh_t": 295.0,
+      "T_max_C": 118.0,
+      "ratio_max": 0.55,
+      "mu_max": 0.058,
+      "duree_vie_filieres_h": 650,
+      "duree_vie_lubrifiant_jours": 45,
+      "taux_rebut_pct": 3.5,
+      "verdict": "CONFORME - toutes contraintes respectees",
+      "gain_vs_actuel": {
+        "production_pct": 19.4,
+        "SEC_pct": -7.8,
+        "duree_vie_filieres_pct": 30.0,
+        "investissement_USD": 800,
+        "ROI_jours": 21
+      }
+    }
+  },
+
+  "scenario_C_optimal_NSGA2": {
+    "nom": "Cas C - Configuration optimale NSGA-II (compromis equilibre)",
+    "description": "Solution issue du front de Pareto NSGA-II (40 individus, 20 generations). Re-optimisation des angles + vitesse + lubrifiant.",
+    "couleur_demo": "#7AAE89",
+    "configuration": {
+      "v_f_m_s": 18.0,
+      "alphas_deg": [6.0, 6.0, 6.0, 6.5, 6.5, 7.0, 7.5, 8.0, 8.0],
+      "lubrifiant": "huile_synthetique",
+      "age_lubrifiant_jours": 30,
+      "T_ambient_C": 28.0,
+      "OEE": 0.78
+    },
+    "pass_schedule": {
+      "passe_1": {"d_in_mm": 8.00, "d_out_mm": 7.00, "epsilon_i": 0.267, "epsilon_cum": 0.267, "sigma_y_MPa": 173, "sigma_d_MPa":  78, "ratio": 0.45, "delta_T_C": 11, "T_C":  35, "mu": 0.040, "F_kN":  3.0},
+      "passe_2": {"d_in_mm": 7.00, "d_out_mm": 6.10, "epsilon_i": 0.275, "epsilon_cum": 0.542, "sigma_y_MPa": 247, "sigma_d_MPa": 113, "ratio": 0.46, "delta_T_C": 13, "T_C":  41, "mu": 0.040, "F_kN":  3.3},
+      "passe_3": {"d_in_mm": 6.10, "d_out_mm": 5.30, "epsilon_i": 0.281, "epsilon_cum": 0.823, "sigma_y_MPa": 304, "sigma_d_MPa": 138, "ratio": 0.45, "delta_T_C": 14, "T_C":  48, "mu": 0.040, "F_kN":  3.0},
+      "passe_4": {"d_in_mm": 5.30, "d_out_mm": 4.60, "epsilon_i": 0.284, "epsilon_cum": 1.107, "sigma_y_MPa": 352, "sigma_d_MPa": 162, "ratio": 0.46, "delta_T_C": 15, "T_C":  56, "mu": 0.041, "F_kN":  2.7},
+      "passe_5": {"d_in_mm": 4.60, "d_out_mm": 4.00, "epsilon_i": 0.279, "epsilon_cum": 1.386, "sigma_y_MPa": 394, "sigma_d_MPa": 181, "ratio": 0.46, "delta_T_C": 16, "T_C":  64, "mu": 0.041, "F_kN":  2.3},
+      "passe_6": {"d_in_mm": 4.00, "d_out_mm": 3.40, "epsilon_i": 0.325, "epsilon_cum": 1.711, "sigma_y_MPa": 438, "sigma_d_MPa": 215, "ratio": 0.49, "delta_T_C": 17, "T_C":  73, "mu": 0.042, "F_kN":  1.9},
+      "passe_7": {"d_in_mm": 3.40, "d_out_mm": 2.90, "epsilon_i": 0.318, "epsilon_cum": 2.029, "sigma_y_MPa": 477, "sigma_d_MPa": 240, "ratio": 0.50, "delta_T_C": 18, "T_C":  83, "mu": 0.043, "F_kN":  1.6},
+      "passe_8": {"d_in_mm": 2.90, "d_out_mm": 2.40, "epsilon_i": 0.378, "epsilon_cum": 2.407, "sigma_y_MPa": 520, "sigma_d_MPa": 270, "ratio": 0.52, "delta_T_C": 19, "T_C":  93, "mu": 0.044, "F_kN":  1.2},
+      "passe_9": {"d_in_mm": 2.40, "d_out_mm": 2.00, "epsilon_i": 0.365, "epsilon_cum": 2.772, "sigma_y_MPa": 558, "sigma_d_MPa": 295, "ratio": 0.53, "delta_T_C": 20, "T_C": 102, "mu": 0.045, "F_kN":  0.9}
+    },
+    "indicateurs_globaux": {
+      "production_t_jour": 25.0,
+      "SEC_kWh_t": 245.0,
+      "T_max_C": 102.0,
+      "ratio_max": 0.53,
+      "mu_max": 0.045,
+      "duree_vie_filieres_h": 850,
+      "duree_vie_lubrifiant_jours": 90,
+      "taux_rebut_pct": 1.8,
+      "verdict": "OPTIMAL - 4 contraintes respectees avec marges confortables",
+      "gain_vs_actuel": {
+        "production_pct": 38.9,
+        "SEC_pct": -23.4,
+        "duree_vie_filieres_pct": 70.0,
+        "duree_vie_lubrifiant_pct": 200.0,
+        "investissement_USD": 4500,
+        "ROI_jours": 38
+      }
+    }
+  },
+
+  "scenario_D_cible_2027": {
+    "nom": "Cas D - Cible technologique 2027 (nano-graphene)",
+    "description": "Horizon long-terme avec nano-lubrifiant au graphene modifie. Necessite import et formation operateurs.",
+    "couleur_demo": "#0E3A2F",
+    "configuration": {
+      "v_f_m_s": 22.0,
+      "alphas_deg": [5.5, 5.5, 6.0, 6.0, 6.5, 7.0, 7.5, 8.0, 8.0],
+      "lubrifiant": "nano_graphene",
+      "age_lubrifiant_jours": 60,
+      "T_ambient_C": 28.0,
+      "OEE": 0.85
+    },
+    "indicateurs_globaux": {
+      "production_t_jour": 30.0,
+      "SEC_kWh_t": 215.0,
+      "T_max_C": 92.0,
+      "ratio_max": 0.48,
+      "mu_max": 0.034,
+      "duree_vie_filieres_h": 1100,
+      "duree_vie_lubrifiant_jours": 180,
+      "taux_rebut_pct": 1.2,
+      "verdict": "OPTIMAL+ - depasse les specs constructeur",
+      "gain_vs_actuel": {
+        "production_pct": 66.7,
+        "SEC_pct": -32.8,
+        "duree_vie_filieres_pct": 120.0,
+        "investissement_USD": 28000,
+        "ROI_jours": 165
+      }
+    }
+  },
+
+  "synthese_economique_USD_par_an": {
+    "_hypothese_volume": "Hypothese : 320 jours d'operation par an, prix electricite 0.12 USD/kWh, fil cuivre 9000 USD/t, filiere WC-Co 800 USD/unite (set de 9)",
+    "scenario_A_actuel": {
+      "production_t_an": 5760,
+      "CA_estime_USD": 51840000,
+      "cout_energie_USD":  221184,
+      "cout_filieres_USD":   46080,
+      "cout_lubrifiant_USD": 9600,
+      "marge_brute_indicative_USD": 51563136
+    },
+    "scenario_B_quick_win": {
+      "production_t_an": 6880,
+      "CA_estime_USD": 61920000,
+      "cout_energie_USD":  243456,
+      "cout_filieres_USD":   35446,
+      "cout_lubrifiant_USD": 8959,
+      "marge_brute_indicative_USD": 61632139,
+      "gain_annuel_vs_A_USD": 10069003
+    },
+    "scenario_C_optimal": {
+      "production_t_an": 8000,
+      "CA_estime_USD": 72000000,
+      "cout_energie_USD":  235200,
+      "cout_filieres_USD":   27106,
+      "cout_lubrifiant_USD": 14400,
+      "marge_brute_indicative_USD": 71723294,
+      "gain_annuel_vs_A_USD": 20160158
+    },
+    "scenario_D_cible": {
+      "production_t_an": 9600,
+      "CA_estime_USD": 86400000,
+      "cout_energie_USD":  247680,
+      "cout_filieres_USD":   20945,
+      "cout_lubrifiant_USD": 96000,
+      "marge_brute_indicative_USD": 86035375,
+      "gain_annuel_vs_A_USD": 34472239
+    }
+  },
+
+  "front_pareto_demo": {
+    "_description": "10 points caracteristiques du front de Pareto NSGA-II pour la demo",
+    "_objectifs": "f1 = -production (maximiser), f2 = SEC (minimiser)",
+    "points": [
+      {"id": 1,  "production_t_j": 16.0, "SEC_kWh_t": 220, "v_f_m_s": 11.0, "alpha_moy_deg": 5.5, "lubrifiant": "huile_synthetique", "type": "energie_min"},
+      {"id": 2,  "production_t_j": 18.5, "SEC_kWh_t": 228, "v_f_m_s": 13.5, "alpha_moy_deg": 5.8, "lubrifiant": "huile_synthetique", "type": "pareto"},
+      {"id": 3,  "production_t_j": 21.0, "SEC_kWh_t": 235, "v_f_m_s": 15.5, "alpha_moy_deg": 6.0, "lubrifiant": "huile_synthetique", "type": "pareto"},
+      {"id": 4,  "production_t_j": 23.0, "SEC_kWh_t": 240, "v_f_m_s": 17.0, "alpha_moy_deg": 6.5, "lubrifiant": "huile_synthetique", "type": "pareto"},
+      {"id": 5,  "production_t_j": 25.0, "SEC_kWh_t": 245, "v_f_m_s": 18.0, "alpha_moy_deg": 6.8, "lubrifiant": "huile_synthetique", "type": "compromis_recommande"},
+      {"id": 6,  "production_t_j": 26.5, "SEC_kWh_t": 252, "v_f_m_s": 19.0, "alpha_moy_deg": 7.0, "lubrifiant": "savon_sodique",     "type": "pareto"},
+      {"id": 7,  "production_t_j": 28.0, "SEC_kWh_t": 263, "v_f_m_s": 20.5, "alpha_moy_deg": 7.2, "lubrifiant": "savon_sodique",     "type": "pareto"},
+      {"id": 8,  "production_t_j": 29.5, "SEC_kWh_t": 278, "v_f_m_s": 22.0, "alpha_moy_deg": 7.5, "lubrifiant": "savon_sodique",     "type": "pareto"},
+      {"id": 9,  "production_t_j": 30.5, "SEC_kWh_t": 295, "v_f_m_s": 23.0, "alpha_moy_deg": 7.8, "lubrifiant": "savon_calcique",    "type": "pareto"},
+      {"id": 10, "production_t_j": 31.0, "SEC_kWh_t": 318, "v_f_m_s": 24.0, "alpha_moy_deg": 8.0, "lubrifiant": "savon_calcique",    "type": "production_max"}
+    ]
+  }
+}
