@@ -122,7 +122,11 @@ def integrale_degradation(temps_array, T_array_K, Q_lub_J_mol):
     integrand = np.exp(-Q_lub_J_mol / (R_GAS * T_array_K))
 
     # Intégration par la méthode des trapèzes
-    D = float(np.trapz(integrand, temps_array))
+    # Note: np.trapz est supprimé dans NumPy 2.0, remplacé par np.trapezoid
+    if hasattr(np, 'trapezoid'):
+        D = float(np.trapezoid(integrand, temps_array))
+    else:
+        D = float(np.trapz(integrand, temps_array))
 
     return D
 

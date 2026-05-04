@@ -3,7 +3,7 @@ SAD LATRECA - Application Dash (entree principale)
 """
 
 import dash
-from dash import Dash, html, dcc, page_container
+from dash import Dash, html, dcc, page_container, Input, Output, State, callback
 import dash_bootstrap_components as dbc
 
 from components.sidebar import sidebar
@@ -73,11 +73,16 @@ server = app.server
 # ════════════════════════════════════════════════════════════════
 
 app.layout = html.Div(
-    className="app",
+    id="app-root",
+    className="app",                                   # toggle ajoute "sidebar-collapsed"
     children=[
         # Store global de configuration (persiste entre les pages)
         dcc.Store(id="config-store", storage_type="session", data=DEFAULT_CONFIG),
+        # Etat sidebar (open/collapsed) - persiste entre rafraichissements
+        dcc.Store(id="sidebar-state", storage_type="session", data={"open": True}),
         sidebar(),
+        # Overlay sombre cliquable (visible uniquement en mode mobile quand sidebar ouverte)
+        html.Div(id="sidebar-overlay", className="sidebar-overlay", n_clicks=0),
         html.Main(
             className="main-content",
             children=[
@@ -86,6 +91,40 @@ app.layout = html.Div(
         ),
     ],
 )
+
+
+# ════════════════════════════════════════════════════════════════
+# Callback : toggle de la sidebar (bouton hamburger + overlay mobile)
+# ════════════════════════════════════════════════════════════════
+
+@callback(
+    [Output("app-root", "className"),
+     Output("sidebar-state", "data")],
+    [Input("btn-sidebar-toggle", "n_clicks"),
+     Input("sidebar-overlay", "n_clicks")],
+    State("sidebar-state", "data"),
+    prevent_initial_call=True,
+)
+def toggle_sidebar(n_burger, n_overlay, state):
+    """
+    Bascule l'etat ouvert/ferme de la sidebar.
+    - Click sur hamburger : toggle
+    - Click sur overlay mobile : ferme toujours
+    """
+    state = state or {"open": True}
+    is_open = bool(state.get("open", True))
+
+    # Detection du declencheur
+    triggered = (dash.callback_context.triggered[0]["prop_id"]
+                 if dash.callback_context.triggered else "")
+
+    if triggered.startswith("sidebar-overlay"):
+        new_open = False
+    else:
+        new_open = not is_open
+
+    cls = "app" if new_open else "app sidebar-collapsed"
+    return cls, {"open": new_open}
 
 
 # ════════════════════════════════════════════════════════════════

@@ -29,11 +29,18 @@ def topbar(crumbs):
         children=html.Div(
             className="topbar-inner",
             children=[
-                # Gauche : hamburger + breadcrumb
+                # Gauche : hamburger (bouton actif) + breadcrumb
                 html.Div(
                     className="topbar-left",
                     children=[
-                        html.Span(className="topbar-burger", children=icon("menu")),
+                        html.Button(
+                            id="btn-sidebar-toggle",
+                            n_clicks=0,
+                            className="topbar-burger",
+                            children=icon("menu"),
+                            title="Afficher / masquer la barre latérale",
+                            **{"aria-label": "Toggle sidebar"},
+                        ),
                         html.Div(className="breadcrumb", children=crumb_children),
                     ],
                 ),

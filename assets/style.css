@@ -1573,13 +1573,408 @@ input:focus, textarea:focus {
   );
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 1100px) {
-  .kpi-grid, .chart-grid-2, .module-grid, .feature-grid,
+/* ════════════════════════════════════════════════════════════════
+   SIDEBAR TOGGLE (etat collapse declenche par bouton hamburger)
+   ════════════════════════════════════════════════════════════════ */
+
+/* Transition fluide de la sidebar */
+.sidebar {
+  transition: transform 0.3s ease, width 0.3s ease, margin-left 0.3s ease;
+  z-index: 1000;
+}
+
+.main-content {
+  transition: margin-left 0.3s ease, padding 0.2s ease;
+}
+
+/* Overlay sombre (visible uniquement en mobile quand sidebar ouverte) */
+.sidebar-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(10, 42, 31, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Bouton hamburger : transition couleur au hover */
+.topbar-burger {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-burger:hover {
+  background: var(--gold-bg, #FBF2DC);
+  color: var(--gold-deep);
+  border-color: var(--gold);
+}
+.topbar-burger:active {
+  transform: scale(0.95);
+}
+
+/* État sidebar repliée (desktop / tablette) */
+.app.sidebar-collapsed {
+  grid-template-columns: 0 1fr;
+}
+.app.sidebar-collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — DESKTOP LARGE (>= 1400px)
+   ════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1400px) {
+  .main-content {
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — DESKTOP STANDARD (1100-1399px)
+   Sidebar visible, layouts complets
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1399px) {
+  .topbar-search { width: 280px; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — TABLETTE (768-1099px)
+   Sidebar repliable, layouts a 2 colonnes max
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1099px) {
+  /* Sidebar plus etroite */
+  .app {
+    grid-template-columns: 220px 1fr;
+  }
+
+  /* Layouts a 2 colonnes au lieu de 4 */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .module-grid, .feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .chart-grid-2 {
+    grid-template-columns: 1fr;        /* charts pleine largeur */
+  }
   .diagnostic-grid {
     grid-template-columns: 1fr;
   }
-  .hero { flex-direction: column; }
-  .hero-meta { width: 100%; }
-  .topbar-search { width: 200px; }
+
+  /* Hero passe en colonne */
+  .hero {
+    flex-direction: column;
+  }
+  .hero-meta {
+    width: 100%;
+  }
+
+  /* Topbar : search retrecit */
+  .topbar-search {
+    width: 200px;
+  }
+
+  /* Padding main reduit */
+  .main-content {
+    padding: 20px 24px 50px 24px;
+  }
+
+  /* Page header : icone + texte se reorganise */
+  .page-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* Tableaux : font legerement reduite */
+  table { font-size: 12.5px; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — TABLETTE COMPACTE (768-899px)
+   Sidebar par defaut OVERLAY (cachee), bouton requis
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 899px) {
+  .app {
+    grid-template-columns: 1fr;       /* sidebar sort du flux */
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    width: 260px;
+    transform: translateX(-100%);     /* cachee par defaut */
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Sidebar VISIBLE quand .app SANS .sidebar-collapsed */
+  .app:not(.sidebar-collapsed) .sidebar {
+    transform: translateX(0);
+  }
+
+  /* Overlay actif quand sidebar ouverte */
+  .app:not(.sidebar-collapsed) .sidebar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Sidebar COLLAPSED : reste cachee */
+  .app.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+  }
+
+  /* Main content prend toute la largeur */
+  .main-content {
+    margin-left: 0;
+    padding: 16px 18px 40px 18px;
+    max-width: 100%;
+  }
+
+  /* Topbar : recherche et carte utilisateur cachees */
+  .topbar-search {
+    display: none;
+  }
+  .sidebar-user {
+    /* visible dans la sidebar */
+  }
+
+  /* Hero plus compact */
+  .hero {
+    padding: 24px 20px;
+  }
+  .hero-content h1 {
+    font-size: 28px;
+  }
+
+  /* Page header plus compact */
+  .page-header-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 22px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (< 768px)
+   Tout en colonne unique, sidebar overlay, topbar simplifie
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  /* Tout en 1 colonne */
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .module-grid, .feature-grid {
+    grid-template-columns: 1fr;
+  }
+  .control-row, .control-row-3 {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Sidebar largeur 85% du viewport */
+  .sidebar {
+    width: 85vw;
+    max-width: 320px;
+  }
+
+  /* Topbar minimal */
+  .topbar {
+    padding: 10px 16px;
+    margin: -16px -18px 14px -18px;
+  }
+  .topbar-inner {
+    gap: 12px;
+  }
+  .topbar-icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px !important;
+  }
+
+  /* Breadcrumb : montre seulement la page courante */
+  .crumb-step,
+  .crumb-sep:not(:last-of-type) {
+    display: none;
+  }
+  .crumb-current {
+    font-size: 13px;
+  }
+
+  /* Main content padding minimal */
+  .main-content {
+    padding: 12px 16px 30px 16px;
+  }
+
+  /* Hero ultra-compact */
+  .hero {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .hero-content h1 {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+  .hero-content p {
+    font-size: 14px;
+  }
+  .hero-tag {
+    font-size: 9px;
+    padding: 4px 10px;
+  }
+  .hero-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  /* KPI cards : valeurs plus grandes pour lisibilite */
+  .kpi-card {
+    padding: 14px 16px;
+  }
+  .kpi-value-num {
+    font-size: 28px;
+  }
+
+  /* Page header : empile vertical */
+  .page-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .page-header-left {
+    flex-direction: row;
+    width: 100%;
+  }
+  .page-header h1 {
+    font-size: 18px !important;
+  }
+  .page-header p {
+    font-size: 12px;
+  }
+  .page-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Tableaux scrollables horizontalement si trop larges */
+  .dash-table-container,
+  .control-card,
+  .chart-card,
+  .section-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Cartes plus compactes */
+  .chart-card, .section-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .chart-card-title h4 {
+    font-size: 14px !important;
+  }
+
+  /* Boutons gold pleine largeur */
+  .btn-large {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Reduit les paddings tableaux */
+  .preset-grid {
+    grid-template-columns: 1fr;
+  }
+  .preset-card {
+    padding: 12px 14px;
+  }
+
+  /* Footer */
+  .footer-section {
+    padding: 16px;
+    text-align: center;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Sidebar plus douce sur mobile */
+  .sidebar-brand {
+    padding: 14px 12px;
+  }
+  .nav-section-title {
+    font-size: 9px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE — ULTRA-MOBILE (< 480px)
+   Optimisation pour tres petits ecrans
+   ════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 479px) {
+  /* Topbar reduit a l'essentiel */
+  .topbar-icon-btn[title="Notifications"] {
+    display: none;             /* cache la cloche pour gagner de la place */
+  }
+
+  /* KPI value plus petite */
+  .kpi-value-num {
+    font-size: 24px;
+  }
+
+  /* Tableaux : font tres compacte */
+  table, .dash-table-container td, .dash-table-container th {
+    font-size: 11px !important;
+    padding: 6px 4px !important;
+  }
+
+  /* Cards padding minimal */
+  .kpi-card, .chart-card, .section-card {
+    padding: 12px;
+  }
+
+  /* Sidebar : largeur quasi pleine */
+  .sidebar {
+    width: 92vw;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   IMPRESSION (mode print)
+   ════════════════════════════════════════════════════════════════ */
+
+@media print {
+  .sidebar, .topbar, .sidebar-overlay {
+    display: none !important;
+  }
+  .main-content {
+    padding: 0;
+    margin: 0;
+    max-width: 100%;
+  }
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .chart-card, .kpi-card, .section-card {
+    page-break-inside: avoid;
+  }
 }
