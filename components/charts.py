@@ -314,11 +314,10 @@ def temperature_profile(T_cumulees, T_seuil=140.0):
     fig.add_hline(
         y=T_seuil,
         line=dict(dash="dash", color=COLORS["coral"], width=2),
-        annotation=dict(
-            text=f"Seuil critique {T_seuil}°C",
-            font=dict(family="JetBrains Mono", size=10, color=COLORS["coral"]),
-            xref="paper", x=0.98, xanchor="right",
-        ),
+        annotation_text=f"Seuil critique {T_seuil}°C",
+        annotation_position="top right",
+        annotation_font=dict(family="JetBrains Mono", size=10,
+                              color=COLORS["coral"]),
     )
 
     fig.update_xaxes(title="Étape", dtick=1)
@@ -396,12 +395,10 @@ def lubricant_evolution(temps_jours, mu_array, mu_initial, mu_critique,
         fig.add_vline(
             x=cycle_recommande,
             line=dict(dash="dash", color=COLORS["mint-deep"], width=1.5),
-            annotation=dict(
-                text=f"Cycle recommandé · J{int(cycle_recommande)}",
-                font=dict(family="JetBrains Mono", size=10,
-                           color=COLORS["mint-deep"]),
-                yshift=10,
-            ),
+            annotation_text=f"Cycle recommandé · J{int(cycle_recommande)}",
+            annotation_position="top left",
+            annotation_font=dict(family="JetBrains Mono", size=10,
+                                  color=COLORS["mint-deep"]),
         )
 
     # Reference verticale : aujourd'hui
@@ -414,12 +411,10 @@ def lubricant_evolution(temps_jours, mu_array, mu_initial, mu_critique,
         fig.add_vline(
             x=age_actuel,
             line=dict(dash="dash", color=COLORS["coral"], width=2),
-            annotation=dict(
-                text=f"Aujourd'hui · J{int(age_actuel)}",
-                font=dict(family="JetBrains Mono", size=10,
-                           color=COLORS["coral"]),
-                yshift=10, xanchor="left",
-            ),
+            annotation_text=f"Aujourd'hui · J{int(age_actuel)}",
+            annotation_position="top right",
+            annotation_font=dict(family="JetBrains Mono", size=10,
+                                  color=COLORS["coral"]),
         )
 
     fig.update_xaxes(title="Temps (jours)")
