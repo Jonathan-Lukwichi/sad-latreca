@@ -79,6 +79,14 @@ app.layout = html.Div(
     children=[
         # Store global de configuration (persiste entre les pages)
         dcc.Store(id="config-store", storage_type="session", data=DEFAULT_CONFIG),
+        # Store global d'optimisation NSGA-II (lu par Accueil + Analyse globale)
+        dcc.Store(id="opt-global-store", storage_type="session", data=None),
+        # Marqueur "config touchee par l'utilisateur" (pour l'etat 'Mode demo')
+        dcc.Store(id="config-touched", storage_type="session", data=False),
+        # Marqueur de la derniere analyse (timestamp ISO)
+        dcc.Store(id="last-analysis-store", storage_type="session", data=None),
+        # Trigger de redirection apres reset (rempli par la callback de reset)
+        dcc.Location(id="app-redirect", refresh=False),
         # Etat sidebar (open/collapsed) - persiste entre rafraichissements
         dcc.Store(id="sidebar-state", storage_type="session", data={"open": True}),
         sidebar(),
@@ -126,6 +134,52 @@ def toggle_sidebar(n_burger, n_overlay, state):
 
     cls = "app" if new_open else "app sidebar-collapsed"
     return cls, {"open": new_open}
+
+
+# ════════════════════════════════════════════════════════════════
+# Callback : reinitialiser l'analyse (HARD RESET)
+# ════════════════════════════════════════════════════════════════
+# Vide tous les stores (config remise aux defauts, optim videe, marqueurs RAZ)
+# puis redirige vers /config pour forcer une nouvelle saisie.
+# ────────────────────────────────────────────────────────────────
+
+@callback(
+    [Output("config-store", "data", allow_duplicate=True),
+     Output("opt-global-store", "data", allow_duplicate=True),
+     Output("config-touched", "data", allow_duplicate=True),
+     Output("last-analysis-store", "data", allow_duplicate=True),
+     Output("app-redirect", "pathname")],
+    Input("btn-reset-analysis", "n_clicks"),
+    prevent_initial_call=True,
+)
+def reset_analysis(n_clicks):
+    """Hard reset : vide tous les stores et redirige vers /config."""
+    if not n_clicks:
+        return (dash.no_update,) * 5
+    return DEFAULT_CONFIG.copy(), None, False, None, "/config"
+
+
+# ════════════════════════════════════════════════════════════════
+# Callback : marquer la config comme "touchee" des qu'un slider bouge
+# ════════════════════════════════════════════════════════════════
+
+@callback(
+    Output("config-touched", "data", allow_duplicate=True),
+    Input("config-store", "data"),
+    State("config-touched", "data"),
+    prevent_initial_call=True,
+)
+def mark_config_touched(config, already_touched):
+    """Bascule a True des le premier changement reel."""
+    if already_touched:
+        return dash.no_update
+    if not config:
+        return dash.no_update
+    # Comparer la config courante au DEFAULT_CONFIG
+    for k, v in DEFAULT_CONFIG.items():
+        if config.get(k) != v:
+            return True
+    return dash.no_update
 
 
 # ════════════════════════════════════════════════════════════════

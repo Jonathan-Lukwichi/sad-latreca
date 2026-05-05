@@ -272,14 +272,16 @@ layout = html.Div([
 
 @callback(
     [Output("analysis-opt-store", "data"),
-     Output("analysis-opt-status", "children")],
+     Output("analysis-opt-status", "children"),
+     Output("opt-global-store", "data", allow_duplicate=True),
+     Output("last-analysis-store", "data", allow_duplicate=True)],
     Input("btn-analysis-launch-opt", "n_clicks"),
     State("config-store", "data"),
     prevent_initial_call=True,
 )
 def launch_opt_from_analysis(n_clicks, config):
     if not n_clicks:
-        return no_update, no_update
+        return no_update, no_update, no_update, no_update
     config = config or {}
 
     parametres_fixes = {
@@ -299,6 +301,7 @@ def launch_opt_from_analysis(n_clicks, config):
     }
 
     try:
+        from datetime import datetime
         res = lancer_optimisation(parametres_fixes,
                                     taille_population=40,
                                     n_generations=25,
@@ -312,19 +315,21 @@ def launch_opt_from_analysis(n_clicks, config):
             "eco": points['eco'],
             "compromis": points['compromis'],
         }
+        ts = datetime.now().isoformat()
         if res['n_solutions_pareto'] == 0:
-            return store, alert(
-                "warning", "Aucune solution Pareto trouvée",
-                "Relachez les contraintes (η_cooling plus eleve, "
-                "ou T_max plus permissif).", icon_name="alert")
+            warn = alert("warning", "Aucune solution Pareto trouvée",
+                          "Relachez les contraintes (η_cooling plus eleve, "
+                          "ou T_max plus permissif).", icon_name="alert")
+            return store, warn, store, ts
         msg = (f"{res['n_solutions_pareto']} solutions Pareto · "
                f"{res['n_evaluations']} evaluations · "
                f"{res['temps_calcul_s']:.1f}s")
-        return store, alert("success", "Optimisation terminée",
-                              msg, icon_name="check")
+        ok = alert("success", "Optimisation terminée", msg, icon_name="check")
+        return store, ok, store, ts
     except Exception as e:
-        return None, alert("danger", "Erreur d'optimisation",
-                              str(e), icon_name="alert")
+        err = alert("danger", "Erreur d'optimisation",
+                     str(e), icon_name="alert")
+        return None, err, no_update, no_update
 
 
 # ═══════════════════════════════════════════════════════════════════
