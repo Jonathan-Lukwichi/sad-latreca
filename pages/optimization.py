@@ -121,6 +121,7 @@ def lancer_opt(n_clicks, config, pop, gen):
         'age_lubrifiant_jours': config.get('age_lubrifiant_jours', 30),
         'T_shift_h': config.get('T_shift_h', 8.0),
         'eta_OEE': config.get('eta_OEE', 0.75),
+        'eta_cooling': config.get('eta_cooling', 0.6),
     }
 
     try:

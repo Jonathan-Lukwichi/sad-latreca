@@ -238,6 +238,11 @@ layout = html.Div([
             slider("slider-oee", 0.40, 0.95, 0.75, 0.05,
                     "Rendement opérationnel", precision=2),
         ]),
+        html.Div(style={"margin-top": "12px"}, children=[
+            slider("slider-cooling", 0.0, 0.9, 0.6, 0.05,
+                    "Refroidissement inter-passes η (cabestans + bain)",
+                    precision=2),
+        ]),
     ]),
 
     # Lubrifiant
@@ -300,6 +305,7 @@ layout = html.Div([
      Input("slider-Tamb", "value"),
      Input("slider-shift", "value"),
      Input("slider-oee", "value"),
+     Input("slider-cooling", "value"),
      Input("dropdown-lubricant", "value"),
      Input("slider-mu0", "value"),
      Input("slider-beta", "value"),
@@ -308,7 +314,7 @@ layout = html.Div([
      Input("slider-age", "value")],
     State("config-store", "data"),
 )
-def update_store(K, n, d0, df, passes, alpha, vf, Tamb, shift, oee,
+def update_store(K, n, d0, df, passes, alpha, vf, Tamb, shift, oee, cooling,
                  lub_key, mu0, beta, gamma, Qlub, age, store):
     """Centralise tous les sliders dans le Store global."""
     store = store or {}
@@ -324,6 +330,7 @@ def update_store(K, n, d0, df, passes, alpha, vf, Tamb, shift, oee,
         "alpha_uniforme": alpha,
         "alphas": [alpha] * passes,
         "v_f": vf, "T_ambient_C": Tamb, "T_shift_h": shift, "eta_OEE": oee,
+        "eta_cooling": cooling if cooling is not None else 0.6,
         "lubricant_key": lub_key,
         "mu_0": mu0, "beta": beta,
         "gamma": (gamma or 1.5) * 1e-6,
@@ -441,6 +448,7 @@ for sid, fmt in [
     ("slider-Tamb", lambda v: f"{int(v)}°C"),
     ("slider-shift", lambda v: f"{int(v)} h"),
     ("slider-oee", lambda v: f"{v:.2f}"),
+    ("slider-cooling", lambda v: f"{v:.2f}"),
     ("slider-mu0", lambda v: f"{v:.3f}"),
     ("slider-beta", lambda v: f"{v:.2f}"),
     ("slider-gamma", lambda v: f"{v:.1f}"),

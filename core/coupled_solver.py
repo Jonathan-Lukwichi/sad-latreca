@@ -169,6 +169,7 @@ def simuler_scenario(parametres):
 
     T_ambient = _f('T_ambient_C', MACHINE_DEFAULTS['T_ambient_C'])
     eta_TQ = _f('eta_TQ', THERMAL_PARAMS['eta_TQ'])
+    eta_cooling = max(0.0, min(0.95, _f('eta_cooling', 0.6)))
     age_lubrifiant_jours = _f('age_lubrifiant_jours', 0)
 
     T_shift = _f('T_shift_h', MACHINE_DEFAULTS['T_shift_h'])
@@ -252,8 +253,11 @@ def simuler_scenario(parametres):
         )
         delta_T_list.append(delta_T)
 
-        # ─── Étape 5 : Mettre à jour T cumulée ───
-        T_actuelle += delta_T
+        # ─── Étape 5 : Mettre à jour T cumulée avec refroidissement inter-passes ───
+        # Modele Kim 2001 + dissipation par cabestans (acier) + bain lubrifiant.
+        # Entre deux passes, une fraction eta_cooling de l'ecart au T ambiant
+        # est evacuee par contact metallique et convection forcee.
+        T_actuelle = T_ambient + (T_actuelle - T_ambient) * (1.0 - eta_cooling) + delta_T
         T_cumulees.append(T_actuelle)
 
         # ─── Étape 6 : Mettre à jour l'historique pour CTTD ───
