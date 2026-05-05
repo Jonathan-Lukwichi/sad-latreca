@@ -59,6 +59,57 @@ layout = html.Div([
                   children="Le calcul peut prendre 30 secondes à 2 minutes."),
     ]),
 
+    # Contraintes manuelles (expert mode)
+    section_title("Contraintes de sécurité (mode expert)",
+                  meta="ajustables manuellement"),
+    control_card([
+        html.Div(style={"margin-bottom": "10px", "color": "#8A9690",
+                        "font-size": "12px"},
+                 children=("Les seuils ci-dessous bornent l'espace de recherche "
+                           "NSGA-II. Relachez-les pour explorer davantage de "
+                           "configurations, resserrez-les pour une securite accrue.")),
+        html.Div(className="control-row", children=[
+            html.Div([
+                html.Label([
+                    html.Span("Seuil thermique T_max"),
+                    html.Span(id="opt-c-tmax-display",
+                              className="control-value", children="140 °C"),
+                ], style={"display": "flex", "justify-content": "space-between"}),
+                dcc.Slider(id="opt-c-tmax", min=80, max=200, value=140, step=5,
+                           tooltip=None),
+            ]),
+            html.Div([
+                html.Label([
+                    html.Span("Marge mécanique σ_d/σ_y max"),
+                    html.Span(id="opt-c-sigma-display",
+                              className="control-value", children="0.60"),
+                ], style={"display": "flex", "justify-content": "space-between"}),
+                dcc.Slider(id="opt-c-sigma", min=0.30, max=0.85, value=0.60, step=0.05,
+                           tooltip=None),
+            ]),
+        ]),
+        html.Div(className="control-row", children=[
+            html.Div([
+                html.Label([
+                    html.Span("Puissance moteur nominale"),
+                    html.Span(id="opt-c-pmot-display",
+                              className="control-value", children="200 kW"),
+                ], style={"display": "flex", "justify-content": "space-between"}),
+                dcc.Slider(id="opt-c-pmot", min=50, max=500, value=200, step=25,
+                           tooltip=None),
+            ]),
+            html.Div([
+                html.Label([
+                    html.Span("Facteur μ critique (×μ₀)"),
+                    html.Span(id="opt-c-mufac-display",
+                              className="control-value", children="1.50"),
+                ], style={"display": "flex", "justify-content": "space-between"}),
+                dcc.Slider(id="opt-c-mufac", min=1.10, max=2.50, value=1.50, step=0.10,
+                           tooltip=None),
+            ]),
+        ]),
+    ]),
+
     # Results storage
     dcc.Store(id="opt-results-store"),
     dcc.Loading(
@@ -88,15 +139,39 @@ def upd_gen(v):
     return f"{int(v)} générations"
 
 
+@callback(Output("opt-c-tmax-display", "children"), Input("opt-c-tmax", "value"))
+def _disp_tmax(v):
+    return f"{int(v)} °C" if v is not None else "—"
+
+
+@callback(Output("opt-c-sigma-display", "children"), Input("opt-c-sigma", "value"))
+def _disp_sigma(v):
+    return f"{v:.2f}" if v is not None else "—"
+
+
+@callback(Output("opt-c-pmot-display", "children"), Input("opt-c-pmot", "value"))
+def _disp_pmot(v):
+    return f"{int(v)} kW" if v is not None else "—"
+
+
+@callback(Output("opt-c-mufac-display", "children"), Input("opt-c-mufac", "value"))
+def _disp_mufac(v):
+    return f"{v:.2f}" if v is not None else "—"
+
+
 @callback(
     Output("opt-results-store", "data"),
     Input("btn-launch-opt", "n_clicks"),
     [State("config-store", "data"),
      State("opt-pop", "value"),
-     State("opt-gen", "value")],
+     State("opt-gen", "value"),
+     State("opt-c-tmax", "value"),
+     State("opt-c-sigma", "value"),
+     State("opt-c-pmot", "value"),
+     State("opt-c-mufac", "value")],
     prevent_initial_call=True,
 )
-def lancer_opt(n_clicks, config, pop, gen):
+def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
     if not n_clicks:
         return no_update
 
@@ -122,6 +197,11 @@ def lancer_opt(n_clicks, config, pop, gen):
         'T_shift_h': config.get('T_shift_h', 8.0),
         'eta_OEE': config.get('eta_OEE', 0.75),
         'eta_cooling': config.get('eta_cooling', 0.6),
+        # Surcharges des seuils de contraintes (mode expert)
+        'T_max_C': float(c_tmax) if c_tmax is not None else 140.0,
+        'sigma_safety_factor': float(c_sigma) if c_sigma is not None else 0.60,
+        'P_moteur_nominal': float(c_pmot) if c_pmot is not None else 200.0,
+        'mu_critique_factor': float(c_mufac) if c_mufac is not None else 1.50,
     }
 
     try:

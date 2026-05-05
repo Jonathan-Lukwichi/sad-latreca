@@ -112,6 +112,12 @@ class ProblemeTrefilage(ElementwiseProblem):
         - G : violation des contraintes
               G[i] <= 0 → contrainte respectée
               G[i] >  0 → contrainte violée
+
+        Les seuils des contraintes peuvent etre surcharges via parametres_fixes :
+            - sigma_safety_factor (defaut 0.6)
+            - T_max_C             (defaut 140)
+            - mu_critique_factor  (defaut 1.5)
+            - P_moteur_nominal    (defaut MACHINE_DEFAULTS)
         """
         # ─── Extraction des variables de décision ───
         v_f = x[0]
@@ -126,6 +132,15 @@ class ProblemeTrefilage(ElementwiseProblem):
             'alphas': alphas,
         })
 
+        # ─── Lecture des seuils (surcharges utilisateur ou defauts) ───
+        sigma_factor = parametres.get('sigma_safety_factor',
+                                       SAFETY_CONSTRAINTS['sigma_safety_factor'])
+        T_max_seuil = parametres.get('T_max_C', SAFETY_CONSTRAINTS['T_max_C'])
+        mu_factor = parametres.get('mu_critique_factor',
+                                    SAFETY_CONSTRAINTS['mu_critique_factor'])
+        P_nom = parametres.get('P_moteur_nominal',
+                                MACHINE_DEFAULTS['P_moteur_nominal'])
+
         # ─── Simulation du scénario ───
         try:
             resultat = simuler_scenario(parametres)
@@ -139,34 +154,26 @@ class ProblemeTrefilage(ElementwiseProblem):
         securite = resultat['securite']
 
         # ─── Calcul des fonctions objectifs ───
-        # Z1 = -production (négatif car pymoo MINIMISE)
-        # Z2 = +SEC (à minimiser)
         Z1_neg = -kpis['Z1_production_t_jour']
         Z2 = kpis['Z2_SEC_kWh_tonne']
-
         out['F'] = np.array([Z1_neg, Z2])
 
-        # ─── Calcul des contraintes ───
-        # G[i] <= 0 → contrainte OK
-        # On normalise pour que les contraintes aient des magnitudes comparables
-
-        # C1 : Mécanique → ratio_max - 0.6 ≤ 0
+        # ─── Calcul des contraintes (G <= 0 = OK) ───
+        # C1 : Mécanique
         ratio_meca_max = max(s['ratio'] for s in securite['C1_mecanique']['detail'])
-        G1 = ratio_meca_max - SAFETY_CONSTRAINTS['sigma_safety_factor']
+        G1 = ratio_meca_max - sigma_factor
 
-        # C2 : Thermique → T_max - 140 ≤ 0
+        # C2 : Thermique
         T_max = kpis['T_max_C']
-        G2 = (T_max - SAFETY_CONSTRAINTS['T_max_C']) / 100.0  # normalisé
+        G2 = (T_max - T_max_seuil) / 100.0
 
-        # C3 : Moteur → P_total - P_nominal ≤ 0
+        # C3 : Moteur
         P_total = kpis['P_totale_kW']
-        P_nom = parametres.get('P_moteur_nominal',
-                                MACHINE_DEFAULTS['P_moteur_nominal'])
-        G3 = (P_total - P_nom) / P_nom  # normalisé
+        G3 = (P_total - P_nom) / max(P_nom, 1e-3)
 
-        # C4 : Tribologique → mu_max - 1.5*mu_0 ≤ 0
+        # C4 : Tribologique
         mu_max = kpis['mu_max']
-        G4 = (mu_max - SAFETY_CONSTRAINTS['mu_critique_factor'] * mu_0) / mu_0
+        G4 = (mu_max - mu_factor * mu_0) / max(mu_0, 1e-3)
 
         out['G'] = np.array([G1, G2, G3, G4])
 

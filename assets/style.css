@@ -1433,7 +1433,10 @@ input:focus, textarea:focus {
   width: 4px;
 }
 .diagnostic-card.diag-actual::before { background: var(--coral, #E07856); }
+.diagnostic-card.diag-optim::before { background: var(--gold, #C5A24C); }
 .diagnostic-card.diag-reference::before { background: var(--mint-deep, #2EAE7F); }
+.diagnostic-grid { display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
 .diagnostic-head {
   display: flex;
@@ -1563,6 +1566,9 @@ input:focus, textarea:focus {
 }
 .ecart-bar-actual {
   background: linear-gradient(90deg, var(--coral, #E07856), #C66544);
+}
+.ecart-bar-optim {
+  background: linear-gradient(90deg, var(--mint-deep, #2EAE7F), #1F8A65);
 }
 .ecart-bar-reference {
   background: linear-gradient(90deg, var(--gold), var(--gold-deep));
