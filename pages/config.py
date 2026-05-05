@@ -133,13 +133,16 @@ layout = html.Div([
 
     # Preset cards (icon + title + subtitle)
     section_card("zap", "Préréglages rapides", None,
-                  pill_text="3 disponibles", pill_type="neutral",
+                  pill_text="4 disponibles", pill_type="neutral",
                   children=[
         html.Div(className="preset-grid", children=[
+            preset_card("factory", "LATRECA Réel · Avril 2026",
+                         "Données collectées en atelier",
+                         "btn-preset-latreca"),
             preset_card("info", "Conditions actuelles",
                          "État relevé en atelier",
                          "btn-preset-current"),
-            preset_card("factory", "Référence constructeur",
+            preset_card("check", "Référence constructeur",
                          "Spécifications LATRECA d'origine",
                          "btn-preset-constructor"),
             preset_card("refresh", "Réinitialiser",
@@ -227,7 +230,7 @@ layout = html.Div([
                   pill_text="Atelier", pill_type="neutral",
                   children=[
         html.Div(className="control-row", children=[
-            slider("slider-vf", 5.0, 30.0, 15.0, 0.5,
+            slider("slider-vf", 0.5, 30.0, 15.0, 0.1,
                     "Vitesse de sortie (m/s)", precision=1),
             slider("slider-Tamb", 15, 45, 25, 1,
                     "Température atelier (°C)", precision=0),
@@ -337,6 +340,17 @@ def update_store(K, n, d0, df, passes, alpha, vf, Tamb, shift, oee, cooling,
         "Q_lub": Qlub,
         "age_lubrifiant_jours": age,
     })
+
+    # Invalider l'override de diametres reels si la geometrie a change
+    # par rapport au preset LATRECA (l'utilisateur a touche d_0/d_f/passes).
+    diam_override = store.get("diametres_reels")
+    if isinstance(diam_override, (list, tuple)) and len(diam_override) > 0:
+        if (abs(float(diam_override[0]) - float(d0)) > 1e-3
+                or abs(float(diam_override[-1]) - float(df)) > 1e-3
+                or len(diam_override) != int(passes) + 1):
+            store.pop("diametres_reels", None)
+            store.pop("_preset_actif", None)
+
     return store
 
 
@@ -435,6 +449,89 @@ def validate_config(store):
         "Vous pouvez maintenant explorer les modules d'analyse via la barre latérale.",
         icon_name="check",
     )
+
+
+# ════════════════════════════════════════════════════════════════
+# Preset LATRECA Reel (donnees collectees Avril 2026)
+# ════════════════════════════════════════════════════════════════
+
+# Diametres reels mesures par passe (fiche de collecte LATRECA)
+LATRECA_DIAMETRES = [5.00, 4.40, 3.93, 3.51, 3.13, 2.81, 2.50, 2.23, 1.99, 1.78]
+
+LATRECA_PRESET = {
+    # Materiau
+    "K": 335.0, "n": 0.50,
+    # Geometrie reelle
+    "d_0": 5.00, "d_f": 1.78, "n_passes": 9,
+    "alpha_uniforme": 8.0,
+    "alphas": [8.0] * 9,
+    "diametres_reels": LATRECA_DIAMETRES,
+    # Conditions operatoires (deduites)
+    "v_f": 1.5, "T_ambient_C": 25,
+    "T_shift_h": 8, "eta_OEE": 0.65,
+    "eta_cooling": 0.40,  # ΔT eau = 2°C → refroidissement faible
+    # Lubrifiant : huile minerale non filtree
+    "lubricant_key": "huile_minerale_latreca",
+    "mu_0": 0.055, "beta": 0.40, "gamma": 3.5e-6,
+    "Q_lub": 65000.0,
+    "age_lubrifiant_jours": 120,
+    # Marqueur preset actif
+    "_preset_actif": "latreca",
+}
+
+
+@callback(
+    [Output("slider-K", "value", allow_duplicate=True),
+     Output("slider-n", "value", allow_duplicate=True),
+     Output("slider-d0", "value", allow_duplicate=True),
+     Output("slider-df", "value", allow_duplicate=True),
+     Output("slider-passes", "value", allow_duplicate=True),
+     Output("slider-alpha", "value", allow_duplicate=True),
+     Output("slider-vf", "value", allow_duplicate=True),
+     Output("slider-Tamb", "value", allow_duplicate=True),
+     Output("slider-shift", "value", allow_duplicate=True),
+     Output("slider-oee", "value", allow_duplicate=True),
+     Output("slider-cooling", "value", allow_duplicate=True),
+     Output("dropdown-lubricant", "value", allow_duplicate=True),
+     Output("slider-age", "value", allow_duplicate=True),
+     Output("config-store", "data", allow_duplicate=True)],
+    Input("btn-preset-latreca", "n_clicks"),
+    State("config-store", "data"),
+    prevent_initial_call=True,
+)
+def apply_latreca_preset(n_clicks, current):
+    """Applique le preset LATRECA Reel (donnees terrain Avril 2026).
+
+    Met a jour les sliders ET injecte dans le config-store les diametres
+    reels mesures par passe + le marqueur de preset actif.
+    """
+    if not n_clicks:
+        return (dash.no_update,) * 14
+    p = LATRECA_PRESET
+    # Fusionner avec le store actuel pour ne pas perdre d'autres cles
+    new_store = (current or {}).copy()
+    new_store.update({
+        "K": p["K"], "n": p["n"],
+        "d_0": p["d_0"], "d_f": p["d_f"],
+        "n_passes": p["n_passes"],
+        "alpha_uniforme": p["alpha_uniforme"],
+        "alphas": p["alphas"],
+        "diametres_reels": p["diametres_reels"],
+        "v_f": p["v_f"], "T_ambient_C": p["T_ambient_C"],
+        "T_shift_h": p["T_shift_h"], "eta_OEE": p["eta_OEE"],
+        "eta_cooling": p["eta_cooling"],
+        "lubricant_key": p["lubricant_key"],
+        "mu_0": p["mu_0"], "beta": p["beta"],
+        "gamma": p["gamma"], "Q_lub": p["Q_lub"],
+        "age_lubrifiant_jours": p["age_lubrifiant_jours"],
+        "_preset_actif": p["_preset_actif"],
+    })
+    return (p["K"], p["n"],
+            p["d_0"], p["d_f"], p["n_passes"], p["alpha_uniforme"],
+            p["v_f"], p["T_ambient_C"], p["T_shift_h"], p["eta_OEE"],
+            p["eta_cooling"], p["lubricant_key"],
+            p["age_lubrifiant_jours"],
+            new_store)
 
 
 # ════ Sliders → display value ════

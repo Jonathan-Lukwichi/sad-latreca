@@ -57,5 +57,18 @@
     "cout_USD_kg": 50.0,
     "disponibilite_RDC": "Faible (a importer)",
     "source": "Wang et al. (2025), Wu (2025), Lang et al. (2025)"
+  },
+
+  "huile_minerale_latreca": {
+    "nom": "Huile minerale non filtree (LATRECA actuel)",
+    "type": "Huile minerale sans additifs",
+    "mu_0": 0.055,
+    "beta": 0.40,
+    "gamma": 3.5e-6,
+    "Q_lub": 65000.0,
+    "duree_vie_jours_estimee": 120,
+    "cout_USD_kg": 4.0,
+    "disponibilite_RDC": "Tres bonne",
+    "source": "Fiche de collecte LATRECA (Avril 2026), pas de filtration, sans additifs"
   }
 }

@@ -180,7 +180,17 @@ def simuler_scenario(parametres):
     # ─── Calculs préalables ───
 
     # 1. Diamètres successifs
-    diametres = calculer_sequence_passes(d_0, d_f, n_passes)
+    # Si l'utilisateur a fourni les diametres reels (preset LATRECA),
+    # on les utilise tel quels au lieu de la sequence geometrique calculee.
+    diametres_override = parametres.get('diametres_reels')
+    if (isinstance(diametres_override, (list, tuple))
+            and len(diametres_override) == n_passes + 1):
+        try:
+            diametres = [float(d) for d in diametres_override]
+        except (TypeError, ValueError):
+            diametres = calculer_sequence_passes(d_0, d_f, n_passes)
+    else:
+        diametres = calculer_sequence_passes(d_0, d_f, n_passes)
 
     # 2. Vitesses par passe (conservation du débit)
     vitesses = calculer_vitesses_par_passe(v_f, diametres, n_passes)
