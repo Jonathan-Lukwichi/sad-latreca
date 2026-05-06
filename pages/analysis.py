@@ -531,7 +531,25 @@ def export_json(n_clicks, store, opt_store):
         return None
 
     import json
-    payload = {
+    import numpy as np
+
+    def _to_py(obj):
+        """Convertit recursivement les types numpy/np.bool en types Python natifs."""
+        if isinstance(obj, dict):
+            return {k: _to_py(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [_to_py(v) for v in obj]
+        if isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return obj
+
+    payload = _to_py({
         "configuration": store,
         "KPIs": resultat['KPIs'],
         "securite": {
@@ -553,7 +571,7 @@ def export_json(n_clicks, store, opt_store):
             "mu_par_passe": resultat['mu_par_passe'],
         },
         "optimisation": opt_store,
-    }
+    })
     return dict(content=json.dumps(payload, indent=2),
                  filename="sad_analyse.json")
 
