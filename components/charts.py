@@ -588,3 +588,113 @@ def diameter_evolution(diametres):
     fig.update_xaxes(title="Étape", dtick=1)
     fig.update_yaxes(title="Diamètre (mm)")
     return _apply_theme(fig, height=320, show_legend=False)
+
+
+# ═══════════════════════════════════════════════════════════════
+# CONVERGENCE NSGA-II : evolution generation par generation
+# ═══════════════════════════════════════════════════════════════
+
+def convergence_chart(history):
+    """
+    Trace la convergence de NSGA-II generation par generation.
+
+    history : dict provenant de lancer_optimisation()['history']
+        - generation : list[int]
+        - best_Z1, mean_Z1 : evolution production [t/jour]
+        - best_Z2, mean_Z2 : evolution SEC [kWh/tonne]
+        - n_feasible : nb d'individus respectant les contraintes
+        - n_pareto : taille du front non-domine
+
+    Affiche 2 sous-graphiques (3 axes Y) :
+        Haut : Z1 et Z2 (best + moyennes)
+        Bas  : nombre d'individus faisables et taille du front Pareto
+    """
+    if not history or not history.get("generation"):
+        # Figure vide en cas d'absence de donnees
+        fig = go.Figure()
+        fig.add_annotation(text="Aucun historique disponible",
+                           xref="paper", yref="paper", x=0.5, y=0.5,
+                           showarrow=False,
+                           font=dict(family="Inter", size=14,
+                                     color=COLORS["muted"]))
+        return _apply_theme(fig, height=320, show_legend=False)
+
+    gens = history["generation"]
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.10,
+        row_heights=[0.65, 0.35],
+        subplot_titles=(
+            "Évolution des objectifs · meilleur faisable + moyenne population",
+            "Diversité & faisabilité par génération",
+        ),
+        specs=[[{"secondary_y": True}],
+               [{"secondary_y": True}]],
+    )
+
+    # --- Ligne 1 : Z1 (production) sur axe gauche, Z2 (SEC) sur axe droit ---
+    fig.add_trace(go.Scatter(
+        x=gens, y=history["best_Z1"], name="Best Z₁ (prod.)",
+        mode="lines+markers",
+        line=dict(color=COLORS["mint-deep"], width=3),
+        marker=dict(size=6, color=COLORS["mint-deep"]),
+        hovertemplate="Gen %{x}<br>Best prod : %{y:.2f} t/j<extra></extra>",
+    ), row=1, col=1, secondary_y=False)
+
+    fig.add_trace(go.Scatter(
+        x=gens, y=history["mean_Z1"], name="Moyenne Z₁",
+        mode="lines",
+        line=dict(color=COLORS["mint-deep"], width=1, dash="dot"),
+        opacity=0.5,
+        hovertemplate="Gen %{x}<br>Moy prod : %{y:.2f} t/j<extra></extra>",
+    ), row=1, col=1, secondary_y=False)
+
+    fig.add_trace(go.Scatter(
+        x=gens, y=history["best_Z2"], name="Best Z₂ (SEC)",
+        mode="lines+markers",
+        line=dict(color=COLORS["gold-deep"], width=3),
+        marker=dict(size=6, color=COLORS["gold-deep"]),
+        hovertemplate="Gen %{x}<br>Best SEC : %{y:.0f} kWh/t<extra></extra>",
+    ), row=1, col=1, secondary_y=True)
+
+    fig.add_trace(go.Scatter(
+        x=gens, y=history["mean_Z2"], name="Moyenne Z₂",
+        mode="lines",
+        line=dict(color=COLORS["gold-deep"], width=1, dash="dot"),
+        opacity=0.5,
+        hovertemplate="Gen %{x}<br>Moy SEC : %{y:.0f} kWh/t<extra></extra>",
+    ), row=1, col=1, secondary_y=True)
+
+    # --- Ligne 2 : faisabilite + taille Pareto ---
+    fig.add_trace(go.Bar(
+        x=gens, y=history["n_feasible"], name="N faisables",
+        marker_color=COLORS["mint"],
+        opacity=0.7,
+        hovertemplate="Gen %{x}<br>%{y} individus faisables<extra></extra>",
+    ), row=2, col=1, secondary_y=False)
+
+    fig.add_trace(go.Scatter(
+        x=gens, y=history["n_pareto"], name="Taille Pareto",
+        mode="lines+markers",
+        line=dict(color=COLORS["coral"], width=2.5),
+        marker=dict(size=6, color=COLORS["coral"]),
+        hovertemplate="Gen %{x}<br>Pareto : %{y} solutions<extra></extra>",
+    ), row=2, col=1, secondary_y=True)
+
+    # Axes
+    fig.update_yaxes(title_text="Production Z₁ (t/jour)",
+                     color=COLORS["mint-deep"], row=1, col=1,
+                     secondary_y=False)
+    fig.update_yaxes(title_text="SEC Z₂ (kWh/tonne)",
+                     color=COLORS["gold-deep"], row=1, col=1,
+                     secondary_y=True)
+    fig.update_yaxes(title_text="N faisables",
+                     color=COLORS["mint"], row=2, col=1,
+                     secondary_y=False)
+    fig.update_yaxes(title_text="Taille Pareto",
+                     color=COLORS["coral"], row=2, col=1,
+                     secondary_y=True)
+    fig.update_xaxes(title_text="Génération", row=2, col=1)
+
+    return _apply_theme(fig, height=520, show_legend=True)

@@ -7,7 +7,8 @@ from components.cards import (
     page_header, section_title, footer, kpi_card,
     chart_card, recommendation_box, control_card, alert,
 )
-from components.charts import pareto_front, scenarios_comparison, COLORS
+from components.charts import (pareto_front, scenarios_comparison,
+                                  convergence_chart, COLORS)
 from components.icons import icon
 from components.topbar import topbar
 from core.optimizer import lancer_optimisation, identifier_points_caracteristiques
@@ -71,11 +72,11 @@ layout = html.Div([
         html.Div(className="control-row", children=[
             html.Div([
                 html.Label([
-                    html.Span("Seuil thermique T_max"),
+                    html.Span("Seuil thermique T_max (tréfilage humide LATRECA)"),
                     html.Span(id="opt-c-tmax-display",
                               className="control-value", children="140 °C"),
                 ], style={"display": "flex", "justify-content": "space-between"}),
-                dcc.Slider(id="opt-c-tmax", min=80, max=200, value=140, step=5,
+                dcc.Slider(id="opt-c-tmax", min=20, max=140, value=140, step=5,
                            tooltip=None),
             ]),
             html.Div([
@@ -221,6 +222,7 @@ def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
             "boost": points['boost'],
             "eco": points['eco'],
             "compromis": points['compromis'],
+            "history": resultat.get('history'),
         }
     except Exception as e:
         return {"error": str(e)}
@@ -341,6 +343,29 @@ def afficher_resultats(data):
         f"({eco['Z2_SEC_kWh_tonne']:.0f} kWh/t)."
     )
 
+    # Graphique de convergence (si l'historique est disponible)
+    history = data.get("history")
+    convergence_section = []
+    if history and history.get("generation"):
+        n_gen = len(history["generation"])
+        last_z1 = history["best_Z1"][-1] if history["best_Z1"] else 0
+        last_z2 = history["best_Z2"][-1] if history["best_Z2"] else 0
+        first_z1 = next((z for z in history["best_Z1"] if z > 0), last_z1)
+        gain = ((last_z1 - first_z1) / first_z1 * 100
+                if first_z1 > 0 else 0)
+        meta_text = (f"{n_gen} générations · "
+                      f"gain Z₁ +{gain:.0f}% · "
+                      f"convergence finale {last_z1:.1f} t/j ↔ "
+                      f"{last_z2:.0f} kWh/t")
+        fig_conv = convergence_chart(history)
+        convergence_section = [
+            section_title("Convergence de l'algorithme", meta=meta_text),
+            chart_card(
+                "Évolution génération par génération · NSGA-II en action",
+                dcc.Graph(figure=fig_conv,
+                          config={"displayModeBar": False})),
+        ]
+
     return html.Div([
         html.Div(className="kpi-grid", children=kpis,
                   style={"margin-top": "20px"}),
@@ -349,6 +374,8 @@ def afficher_resultats(data):
         chart_card("Configurations optimales (production vs consommation)",
                     dcc.Graph(figure=fig_pareto,
                               config={"displayModeBar": False})),
+
+        *convergence_section,
 
         section_title("Comparaison des scénarios"),
         chart_card("Performance par stratégie",

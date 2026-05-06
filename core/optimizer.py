@@ -49,6 +49,7 @@ from core.parameters import (
 try:
     from pymoo.algorithms.moo.nsga2 import NSGA2
     from pymoo.core.problem import ElementwiseProblem
+    from pymoo.core.callback import Callback
     from pymoo.optimize import minimize
     from pymoo.operators.crossover.sbx import SBX
     from pymoo.operators.mutation.pm import PM
@@ -61,6 +62,70 @@ except ImportError as e:
     # Stub minimal pour que la classe ProblemeTrefilage puisse etre importee
     class ElementwiseProblem:
         def __init__(self, *args, **kwargs): pass
+
+    class Callback:
+        def __init__(self, *args, **kwargs):
+            self.data = {}
+
+
+class HistoryCallback(Callback):
+    """
+    Capture les metriques d'evolution generation par generation pour
+    afficher la convergence de l'algorithme dans l'UI.
+
+    Pour chaque generation, on stocke :
+        - best_Z1   : meilleure production realisable (max parmi les feasibles)
+        - best_Z2   : meilleure SEC realisable (min parmi les feasibles)
+        - mean_Z1, mean_Z2 : moyennes sur la population
+        - n_feasible : nombre d'individus respectant toutes les contraintes
+        - n_pareto   : taille du front non-domine courant
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.data["generation"] = []
+        self.data["best_Z1"] = []
+        self.data["best_Z2"] = []
+        self.data["mean_Z1"] = []
+        self.data["mean_Z2"] = []
+        self.data["n_feasible"] = []
+        self.data["n_pareto"] = []
+
+    def notify(self, algorithm):
+        gen = int(algorithm.n_gen)
+        F = algorithm.pop.get("F")  # objectifs : [-Z1, Z2]
+        G = algorithm.pop.get("G")  # contraintes (≤ 0 = feasible)
+
+        # Indices feasibles (toutes contraintes G_i ≤ 0)
+        feasible_mask = (G <= 0).all(axis=1) if G is not None else None
+
+        if feasible_mask is not None and feasible_mask.any():
+            F_feas = F[feasible_mask]
+            best_z1 = float(-F_feas[:, 0].min())  # -F[0] est negatif → min
+            best_z2 = float(F_feas[:, 1].min())
+            n_feas = int(feasible_mask.sum())
+        else:
+            # Aucune solution faisable a cette generation
+            best_z1 = 0.0
+            best_z2 = 0.0
+            n_feas = 0
+
+        # Moyennes sur toute la pop (feasible ou non)
+        mean_z1 = float(-F[:, 0].mean())
+        mean_z2 = float(F[:, 1].mean())
+
+        # Taille du front non-domine
+        n_pareto = 0
+        if hasattr(algorithm, "opt") and algorithm.opt is not None:
+            n_pareto = len(algorithm.opt)
+
+        self.data["generation"].append(gen)
+        self.data["best_Z1"].append(best_z1)
+        self.data["best_Z2"].append(best_z2)
+        self.data["mean_Z1"].append(mean_z1)
+        self.data["mean_Z2"].append(mean_z2)
+        self.data["n_feasible"].append(n_feas)
+        self.data["n_pareto"].append(n_pareto)
 
 
 class ProblemeTrefilage(ElementwiseProblem):
@@ -237,6 +302,9 @@ def lancer_optimisation(parametres_fixes,
     # ─── Critère d'arrêt : nombre de générations ───
     arret = get_termination("n_gen", n_generations)
 
+    # ─── Callback de capture d'historique pour graphique de convergence ───
+    history = HistoryCallback()
+
     # ─── Lancement de l'optimisation ───
     t_debut = time.time()
     resultat = minimize(
@@ -245,6 +313,7 @@ def lancer_optimisation(parametres_fixes,
         arret,
         seed=42,           # graine pour reproductibilité
         verbose=afficher_progression,
+        callback=history,
     )
     t_fin = time.time()
 
@@ -274,6 +343,7 @@ def lancer_optimisation(parametres_fixes,
         'n_evaluations': resultat.algorithm.evaluator.n_eval,
         'temps_calcul_s': t_fin - t_debut,
         'n_solutions_pareto': len(pareto_X) if pareto_X is not None else 0,
+        'history': dict(history.data),  # courbes d'evolution par generation
     }
 
 
