@@ -121,8 +121,34 @@ layout = html.Div([
         children=html.Div(id="opt-results-container"),
     ),
 
+    # ─── Section What-If : scenario manuel vs NSGA-II ───
+    html.Div(id="manual-scenario-section",
+              children=html.Div(
+                  id="manual-scenario-placeholder",
+                  style={"display": "none"})),
+
     footer(),
 ])
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Composants reutilisables pour la section Scenario Manuel
+# ═══════════════════════════════════════════════════════════════════
+
+def _wh_slider(slider_id, label, mn, mx, val, step, fmt_id):
+    """Slider compact pour la section What-If."""
+    return html.Div(style={"margin-bottom": "10px"}, children=[
+        html.Label([
+            html.Span(label, style={"font-size": "12px",
+                                      "color": "#3D4F47"}),
+            html.Span(id=fmt_id, className="control-value",
+                      children="—",
+                      style={"float": "right"}),
+        ]),
+        dcc.Slider(id=slider_id, min=mn, max=mx, value=val, step=step,
+                    tooltip=None, marks=None,
+                    className="sad-slider"),
+    ])
 
 
 @callback(
@@ -286,44 +312,57 @@ def afficher_resultats(data):
     solutions = data["solutions"]
     baseline = data.get("baseline")
 
-    # ─── Bloc BASELINE → OPTIMISE (Avant / Apres) ───
+    # ─── Bloc PERFORMANCE Avant / Apres (4 cards : perf avant, perf apres,
+    #      Solutions Pareto, Gain mensuel) ───
     avant_apres_section = []
     if baseline is not None:
         b_z1 = baseline['Z1']
         b_z2 = baseline['Z2']
+        b_T = baseline['T_max_C']
         c_z1 = compromis['Z1_production_t_jour']
         c_z2 = compromis['Z2_SEC_kWh_tonne']
 
         gain_z1_pct = ((c_z1 - b_z1) / b_z1 * 100) if b_z1 > 0 else 0
         gain_z2_pct = ((b_z2 - c_z2) / b_z2 * 100) if b_z2 > 0 else 0
 
-        # KPI cards Avant/Apres
+        # Gain mensuel estime (22 j ouvres/mois)
+        gain_mensuel_t = (c_z1 - b_z1) * 22
+
+        # 4 KPI cards : Performance AVANT / APRES + Solutions + Gain mensuel
         avant_apres_kpis = html.Div(
             className="kpi-grid",
             style={"margin-top": "20px"},
             children=[
-                kpi_card("info", "AVANT · Production",
+                # Card 1 : Performance AVANT (production t/j actuelle)
+                kpi_card("info", "PERFORMANCE AVANT",
                          f"{b_z1:.2f}", unit=" t/j",
                          trend="config courante", trend_type="flat",
-                         footer=f"v_f = {baseline['v_f']:.1f} m/s · "
-                                f"μ₀ = {baseline['mu_0']:.3f}"),
-                kpi_card("trend-up", "APRÈS · Production",
+                         footer=(f"{b_z2:.0f} kWh/t · T_max {b_T:.0f}°C · "
+                                  f"v_f={baseline['v_f']:.1f} m/s")),
+                # Card 2 : Performance APRES (production optimisee)
+                kpi_card("trend-up", "PERFORMANCE APRÈS",
                          f"{c_z1:.2f}", unit=" t/j",
-                         trend=f"+{gain_z1_pct:.0f}%" if gain_z1_pct >= 0
-                               else f"{gain_z1_pct:.0f}%",
+                         trend=(f"+{gain_z1_pct:.0f}%" if gain_z1_pct >= 0
+                                  else f"{gain_z1_pct:.0f}%"),
                          trend_type="up" if gain_z1_pct > 0 else "down",
-                         footer="scénario Compromis",
+                         footer=(f"{c_z2:.0f} kWh/t · "
+                                  f"v_f={compromis['v_f']:.1f} m/s · "
+                                  f"contraintes OK"),
                          dark=True),
-                kpi_card("info", "AVANT · Consommation",
-                         f"{b_z2:.0f}", unit=" kWh/t",
-                         trend="config courante", trend_type="flat",
-                         footer=f"T_max = {baseline['T_max_C']:.0f} °C"),
-                kpi_card("trend-down", "APRÈS · Consommation",
-                         f"{c_z2:.0f}", unit=" kWh/t",
-                         trend=f"-{gain_z2_pct:.0f}%" if gain_z2_pct >= 0
-                               else f"+{abs(gain_z2_pct):.0f}%",
-                         trend_type="down" if gain_z2_pct > 0 else "up",
-                         footer="scénario Compromis"),
+                # Card 3 : Solutions Pareto explorees
+                kpi_card("check", "SOLUTIONS PARETO",
+                         f"{data['n_solutions']}",
+                         trend=f"{data['n_evaluations']} évals NSGA-II",
+                         trend_type="up",
+                         footer=f"calcul en {data['temps']:.1f} s"),
+                # Card 4 : Gain mensuel estime (impact business)
+                kpi_card("trend-up", "GAIN ESTIMÉ",
+                         f"{gain_mensuel_t:+.0f}", unit=" t/mois",
+                         trend=(f"-{gain_z2_pct:.0f}% énergie"
+                                  if gain_z2_pct > 0
+                                  else f"+{abs(gain_z2_pct):.0f}% énergie"),
+                         trend_type="up" if gain_z2_pct > 0 else "down",
+                         footer="22 jours ouvrés/mois"),
             ],
         )
 
@@ -336,8 +375,9 @@ def afficher_resultats(data):
                 f"En passant de votre configuration actuelle "
                 f"({b_z1:.2f} t/j, {b_z2:.0f} kWh/t) au scénario Compromis "
                 f"NSGA-II ({c_z1:.2f} t/j, {c_z2:.0f} kWh/t), vous gagnez "
-                f"{c_z1 - b_z1:+.2f} t/jour de production tout en "
-                f"économisant {b_z2 - c_z2:+.0f} kWh/tonne d'énergie.",
+                f"{c_z1 - b_z1:+.2f} t/jour de production "
+                f"(soit ~{gain_mensuel_t:+.0f} t/mois) tout en économisant "
+                f"{b_z2 - c_z2:+.0f} kWh/tonne d'énergie.",
                 icon_name="check",
             )
         elif gain_z1_pct < -2:
@@ -362,8 +402,8 @@ def afficher_resultats(data):
             )
 
         avant_apres_section = [
-            section_title("Avant / Après optimisation",
-                          meta="comparaison config courante vs NSGA-II Compromis"),
+            section_title("Performance · Avant / Après optimisation",
+                          meta="config courante vs Compromis NSGA-II"),
             avant_apres_kpis,
             banner,
         ]
@@ -509,6 +549,76 @@ def afficher_resultats(data):
                           config={"displayModeBar": False})),
         ]
 
+    # ─── Section Scenario Manuel (What-If) ───
+    # Defaults : on part du compromis NSGA-II, l'utilisateur peut
+    # modifier ces 3 valeurs et comparer le resultat manuel a NSGA-II.
+    default_v_f = float(compromis['v_f'])
+    default_mu_0 = float(compromis['mu_0'])
+    default_alpha = float(sum(compromis['alphas']) / len(compromis['alphas']))
+
+    manual_section = [
+        section_title(
+            "Scénario manuel · what-if",
+            meta=("comparez votre intuition à l'algorithme : "
+                   "ajustez les 3 leviers principaux et simulez")),
+        html.Div(className="control-card",
+                  style={"display": "grid",
+                         "grid-template-columns": "1fr 1fr",
+                         "gap": "20px"},
+                  children=[
+            # Cote gauche : sliders de configuration manuelle
+            html.Div([
+                html.Div(style={"font-weight": "600",
+                                "color": "#0A2A1F",
+                                "margin-bottom": "12px"},
+                         children="🛠 Vos paramètres"),
+                _wh_slider("manual-vf",
+                            "Vitesse v_f (m/s)",
+                            0.5, 30.0, default_v_f, 0.1,
+                            "manual-vf-display"),
+                _wh_slider("manual-mu0",
+                            "Coefficient frottement μ₀",
+                            0.02, 0.10, default_mu_0, 0.005,
+                            "manual-mu0-display"),
+                _wh_slider("manual-alpha",
+                            "Angle des outillages 2α (°)",
+                            4.0, 12.0, default_alpha, 0.5,
+                            "manual-alpha-display"),
+                html.Div(style={"text-align": "center",
+                                "margin-top": "16px"}, children=[
+                    html.Button(
+                        [icon("zap"), "  Simuler ce scénario"],
+                        id="btn-manual-simulate",
+                        className="btn btn-secondary",
+                        n_clicks=0,
+                    ),
+                ]),
+            ]),
+            # Cote droit : affichage du resultat de la simulation manuelle
+            html.Div([
+                html.Div(style={"font-weight": "600",
+                                "color": "#0A2A1F",
+                                "margin-bottom": "12px"},
+                         children="📊 Résultat (cliquez Simuler)"),
+                html.Div(id="manual-result",
+                         style={"min-height": "180px"}),
+            ]),
+        ]),
+        # Stocker les valeurs NSGA-II compromis et la config-store pour la
+        # callback de simulation manuelle
+        dcc.Store(id="manual-context-store",
+                   data={
+                       "compromis": {
+                           "Z1": float(compromis['Z1_production_t_jour']),
+                           "Z2": float(compromis['Z2_SEC_kWh_tonne']),
+                           "v_f": default_v_f,
+                           "mu_0": default_mu_0,
+                           "alpha": default_alpha,
+                       },
+                       "baseline": baseline,
+                   }),
+    ]
+
     return html.Div([
         # En haut : Avant / Apres optimisation
         *avant_apres_section,
@@ -526,14 +636,203 @@ def afficher_resultats(data):
 
         *convergence_section,
 
-        section_title("Comparaison des scénarios"),
-        chart_card("Performance par stratégie",
-                    dcc.Graph(figure=fig_scen,
-                              config={"displayModeBar": False})),
+        # Section What-If : remplace la comparaison de scenarios qui etait
+        # purement visuelle et redondante (3 bars identiques)
+        *manual_section,
 
         section_title("Configurations recommandées",
                        meta="baseline + 3 scénarios Pareto"),
         table,
 
         rec,
+    ])
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Callbacks d'affichage des sliders du scenario manuel
+# ═══════════════════════════════════════════════════════════════════
+
+@callback(Output("manual-vf-display", "children"),
+          Input("manual-vf", "value"))
+def _disp_manual_vf(v):
+    return f"{v:.1f} m/s" if v is not None else "—"
+
+
+@callback(Output("manual-mu0-display", "children"),
+          Input("manual-mu0", "value"))
+def _disp_manual_mu0(v):
+    return f"{v:.3f}" if v is not None else "—"
+
+
+@callback(Output("manual-alpha-display", "children"),
+          Input("manual-alpha", "value"))
+def _disp_manual_alpha(v):
+    return f"{v:.1f} °" if v is not None else "—"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Callback de simulation du scenario manuel
+# ═══════════════════════════════════════════════════════════════════
+
+def _kv_row(label, value, color="#0A2A1F", bold=False):
+    """Ligne label : valeur stylisee."""
+    style_label = {"color": "#8A9690", "font-size": "12px",
+                    "letter-spacing": "0.05em",
+                    "text-transform": "uppercase"}
+    style_value = {"color": color, "font-size": "16px",
+                    "font-family": "JetBrains Mono",
+                    "font-weight": "700" if bold else "500"}
+    return html.Div(style={"display": "flex",
+                             "justify-content": "space-between",
+                             "padding": "6px 0",
+                             "border-bottom": "1px solid #F0EBDD"},
+                     children=[html.Span(label, style=style_label),
+                               html.Span(value, style=style_value)])
+
+
+@callback(
+    Output("manual-result", "children"),
+    Input("btn-manual-simulate", "n_clicks"),
+    [State("manual-vf", "value"),
+     State("manual-mu0", "value"),
+     State("manual-alpha", "value"),
+     State("config-store", "data"),
+     State("manual-context-store", "data")],
+    prevent_initial_call=True,
+)
+def simuler_scenario_manuel(n_clicks, vf_man, mu0_man, alpha_man,
+                              config, ctx_store):
+    """Simule la config manuelle et la compare au compromis NSGA-II."""
+    if not n_clicks:
+        return no_update
+
+    config = config or {}
+    ctx_store = ctx_store or {}
+    compromis_ctx = ctx_store.get("compromis", {})
+    n_passes = int(config.get('n_passes', 9))
+
+    # Construire le dict de simulation
+    parametres = {
+        'K': config.get('K', 335.0),
+        'n': config.get('n', 0.50),
+        'd_0': config.get('d_0', 8.0),
+        'd_f': config.get('d_f', 2.0),
+        'n_passes': n_passes,
+        'beta': config.get('beta', 0.30),
+        'gamma': config.get('gamma', 1.5e-6),
+        'Q_lub': config.get('Q_lub', 65000.0),
+        'T_ambient_C': config.get('T_ambient_C', 25.0),
+        'age_lubrifiant_jours': config.get('age_lubrifiant_jours', 30),
+        'T_shift_h': config.get('T_shift_h', 8.0),
+        'eta_OEE': config.get('eta_OEE', 0.75),
+        'eta_cooling': config.get('eta_cooling', 0.6),
+        'diametres_reels': config.get('diametres_reels'),
+        # Variables manuelles
+        'v_f': float(vf_man),
+        'mu_0': float(mu0_man),
+        'alphas': [float(alpha_man)] * n_passes,
+    }
+
+    try:
+        r = simuler_scenario(parametres)
+    except Exception as e:
+        return alert("danger", "Erreur de simulation",
+                      str(e), icon_name="alert")
+
+    z1_man = float(r['KPIs']['Z1_production_t_jour'])
+    z2_man = float(r['KPIs']['Z2_SEC_kWh_tonne'])
+    T_man = float(r['KPIs']['T_max_C'])
+    P_man = float(r['KPIs']['P_totale_kW'])
+    mu_max = float(r['KPIs']['mu_max'])
+    tout_ok = bool(r['securite']['tout_ok'])
+
+    # Comparaison vs NSGA-II compromis
+    z1_opt = compromis_ctx.get("Z1", 0)
+    z2_opt = compromis_ctx.get("Z2", 0)
+
+    if z1_opt > 0:
+        ecart_z1 = (z1_man - z1_opt) / z1_opt * 100
+    else:
+        ecart_z1 = 0
+    if z2_opt > 0:
+        ecart_z2 = (z2_man - z2_opt) / z2_opt * 100
+    else:
+        ecart_z2 = 0
+
+    # Verdict
+    if not tout_ok:
+        verdict_icon = "alert"
+        verdict_color = "#E07856"
+        verdict_text = ("⚠ Scénario INFAISABLE — viole au moins une "
+                         "contrainte de sécurité.")
+    elif ecart_z1 > 5 and ecart_z2 < 5:
+        verdict_icon = "trend-up"
+        verdict_color = "#2EAE7F"
+        verdict_text = ("Bravo, vous battez NSGA-II ! Cette config "
+                         "produit plus que le compromis algorithmique.")
+    elif ecart_z1 < -10:
+        verdict_icon = "info"
+        verdict_color = "#A38B3E"
+        verdict_text = (f"NSGA-II propose mieux : "
+                          f"+{abs(ecart_z1):.0f}% de production possible "
+                          f"avec ses paramètres optimaux.")
+    else:
+        verdict_icon = "shield"
+        verdict_color = "#2EAE7F"
+        verdict_text = "Scénario faisable et proche de l'optimum NSGA-II."
+
+    # Couleurs des deltas
+    color_z1 = "#2EAE7F" if ecart_z1 >= 0 else "#E07856"
+    color_z2 = "#E07856" if ecart_z2 >= 0 else "#2EAE7F"
+
+    return html.Div(style={
+        "padding": "14px",
+        "background": "#FAFAF7",
+        "border-radius": "12px",
+        "border": "1px solid #E5DFCE",
+    }, children=[
+        _kv_row("Production Z₁", f"{z1_man:.2f} t/j", bold=True),
+        _kv_row("Consommation Z₂", f"{z2_man:.0f} kWh/t"),
+        _kv_row("T_max", f"{T_man:.0f} °C"),
+        _kv_row("Puissance", f"{P_man:.1f} kW"),
+        _kv_row("μ max", f"{mu_max:.3f}"),
+        _kv_row("Toutes contraintes",
+                "✅ OK" if tout_ok else "❌ VIOLÉE",
+                color="#2EAE7F" if tout_ok else "#E07856", bold=True),
+
+        # Comparaison vs NSGA-II
+        html.Div(style={"margin-top": "12px",
+                         "padding-top": "10px",
+                         "border-top": "2px dashed #C5A24C"}, children=[
+            html.Div("VS NSGA-II Compromis",
+                     style={"color": "#A38B3E",
+                            "font-size": "11px",
+                            "font-weight": "700",
+                            "letter-spacing": "0.08em",
+                            "margin-bottom": "8px"}),
+            _kv_row("Δ Production",
+                     f"{ecart_z1:+.1f}%", color=color_z1, bold=True),
+            _kv_row("Δ Consommation",
+                     f"{ecart_z2:+.1f}%", color=color_z2),
+        ]),
+
+        # Verdict
+        html.Div(style={
+            "margin-top": "12px",
+            "padding": "10px 12px",
+            "background": "white",
+            "border-left": f"4px solid {verdict_color}",
+            "border-radius": "6px",
+            "font-size": "12.5px",
+            "color": "#0A2A1F",
+        }, children=[
+            html.Div(style={"display": "flex", "gap": "8px",
+                             "align-items": "flex-start"}, children=[
+                html.Span(icon(verdict_icon),
+                          style={"color": verdict_color,
+                                 "flex-shrink": "0",
+                                 "margin-top": "2px"}),
+                html.Span(verdict_text),
+            ]),
+        ]),
     ])

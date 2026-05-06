@@ -36,19 +36,22 @@ layout = html.Div([
                 html.Label([
                     html.Span("Durée d'analyse"),
                     html.Span(id="duree-display",
-                              className="control-value", children="365 jours"),
-                ], style={"display": "flex", "justify-content": "space-between"}),
-                dcc.Slider(id="lub-duree", min=30, max=730, value=365, step=30,
-                            tooltip=None),
+                              className="control-value",
+                              children="60 jours"),
+                ], style={"display": "flex",
+                          "justify-content": "space-between"}),
+                dcc.Slider(id="lub-duree", min=30, max=365, value=60,
+                           step=15, tooltip=None),
             ]),
             html.Div([
                 html.Label([
                     html.Span("Température opérationnelle"),
                     html.Span(id="temp-display",
                               className="control-value", children="80°C"),
-                ], style={"display": "flex", "justify-content": "space-between"}),
-                dcc.Slider(id="lub-temp", min=25, max=140, value=80, step=5,
-                            tooltip=None),
+                ], style={"display": "flex",
+                          "justify-content": "space-between"}),
+                dcc.Slider(id="lub-temp", min=25, max=140, value=80,
+                           step=5, tooltip=None),
             ]),
         ]),
     ]),
@@ -123,41 +126,94 @@ def update_lub(store, duree, temp):
         T_operation_C=temp, facteur_critique=1.5,
     )
 
-    # KPIs
-    perf_finale = evolution['mu_array'][-1]
-    degradation = (perf_finale / mu_0 - 1) * 100
+    # ─── KPIs : version maquette Streamlit ───
+    age_actuel = int(store.get('age_lubrifiant_jours', 30))
+    cycle_recommande_jours = (
+        int(prediction['t_remplacement_jours'])
+        if not prediction.get('avertissement')
+        else 365
+    )
 
-    if prediction.get('avertissement'):
-        kpi_remplacement = kpi_card(
-            "check", "Statut lubrifiant", "Stable",
-            trend="> 365j", trend_type="up",
-            footer="Aucun remplacement requis",
-            dark=True,
-        )
+    # Etat courant : interpoler mu(t = age_actuel) sur la courbe
+    import numpy as _np
+    t_arr = _np.array(evolution['temps_jours'])
+    mu_arr = _np.array(evolution['mu_array'])
+    if age_actuel <= t_arr[-1]:
+        mu_actuel = float(_np.interp(age_actuel, t_arr, mu_arr))
     else:
-        kpi_remplacement = kpi_card(
-            "alert", "Remplacer dans",
-            f"{prediction['t_remplacement_jours']:.0f}", unit=" j",
-            trend=f"{prediction['t_remplacement_mois']:.1f} mois",
-            trend_type="warning",
-            footer="Prédiction CTTD",
-            dark=True,
-        )
+        mu_actuel = float(mu_arr[-1])
+
+    # Viscosite residuelle (% du neuf) : decroit en miroir de mu
+    visc_pct = (100.0 * mu_0 / mu_actuel) if mu_actuel > 0 else 100.0
+    visc_pct = max(25.0, min(100.0, visc_pct))
+
+    # KPI 1 : Age du lubrifiant (jour X / cycle Y)
+    age_trend_type = ("warning" if age_actuel > cycle_recommande_jours * 0.7
+                       else "up")
+    delta_jours = age_actuel - cycle_recommande_jours
+    if delta_jours > 0:
+        age_pill = f"+{delta_jours}j vs cycle"
+        age_trend_type = "down"
+    elif age_actuel > cycle_recommande_jours * 0.7:
+        age_pill = f"reste {cycle_recommande_jours - age_actuel}j"
+    else:
+        age_pill = f"jeune ({age_actuel}/{cycle_recommande_jours}j)"
+
+    # KPI 2 : Viscosite residuelle (% du neuf, seuil 70%)
+    visc_trend_type = ("up" if visc_pct >= 80 else
+                        "warning" if visc_pct >= 70 else "down")
+
+    # KPI 3 : Coefficient de frottement actuel μ
+    mu_increase_pct = ((mu_actuel - mu_0) / mu_0 * 100) if mu_0 > 0 else 0
+    mu_trend_type = ("up" if mu_increase_pct < 30 else
+                      "warning" if mu_increase_pct < 60 else "down")
+
+    # KPI 4 : Prochain remplacement
+    if prediction.get('avertissement'):
+        rempl_value = "Stable"
+        rempl_trend = "> 365j"
+        rempl_type = "up"
+        rempl_footer = "aucun remplacement requis"
+    else:
+        jours_restants = max(0,
+                              int(prediction['t_remplacement_jours'])
+                              - age_actuel)
+        if jours_restants <= 0:
+            rempl_value = "Aujourd'hui"
+            rempl_trend = "J-0"
+            rempl_type = "down"
+            rempl_footer = "action immédiate recommandée"
+        elif jours_restants < 7:
+            rempl_value = f"Dans {jours_restants}j"
+            rempl_trend = f"J-{jours_restants}"
+            rempl_type = "warning"
+            rempl_footer = "à planifier cette semaine"
+        else:
+            rempl_value = f"Dans {jours_restants}j"
+            rempl_trend = f"J-{jours_restants}"
+            rempl_type = "up"
+            rempl_footer = "prédiction CTTD μ(T,t)"
 
     kpis = [
-        kpi_card("drop", "Performance initiale",
-                 f"{mu_0:.3f}",
-                 trend="état neuf", trend_type="flat",
-                 footer="Coefficient de frottement"),
-        kpi_card("alert", "Seuil de remplacement",
-                 f"{prediction['mu_cible']:.3f}",
-                 trend="limite", trend_type="warning",
-                 footer="μ critique = 1.5 × μ₀"),
-        kpi_remplacement,
-        kpi_card("trend-up", "Dégradation",
-                 f"+{degradation:.0f}", unit="%",
-                 trend=f"sur {duree}j", trend_type="warning",
-                 footer="Augmentation prévue"),
+        kpi_card("drop", "Âge lubrifiant",
+                 f"{age_actuel}", unit=" j",
+                 trend=age_pill, trend_type=age_trend_type,
+                 footer=f"cycle recommandé : {cycle_recommande_jours} j"),
+        kpi_card("activity", "Viscosité résiduelle",
+                 f"{visc_pct:.0f}", unit=" %",
+                 trend=f"{visc_pct - 100:+.0f}% vs neuf",
+                 trend_type=visc_trend_type,
+                 footer="seuil minimum 70 %",
+                 dark=True),
+        kpi_card("alert", "Coefficient frottement μ",
+                 f"{mu_actuel:.3f}",
+                 trend=f"{mu_increase_pct:+.0f}% vs μ₀",
+                 trend_type=mu_trend_type,
+                 footer=f"nominal μ₀ = {mu_0:.3f}"),
+        kpi_card("calendar", "Prochain remplacement",
+                 rempl_value,
+                 trend=rempl_trend, trend_type=rempl_type,
+                 footer=rempl_footer),
     ]
 
     # Chart evolution dual-line + lignes verticales de reference

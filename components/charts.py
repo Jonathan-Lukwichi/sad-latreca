@@ -454,84 +454,119 @@ def lubricants_comparison(comparaison_resultats):
 def pareto_front(pareto_solutions, points_remarquables=None,
                   point_actuel=None, point_reference=None):
     """
-    Scatter plot du front de Pareto avec :
-    - Ligne pointillee verte reliant les solutions
-    - Zone d'amelioration ombree
-    - 3 points contextuels : Actuel (coral), Optimal (or), Réf. constr. (vert)
+    Front de Pareto stylise (style maquette Streamlit) avec :
+    - Courbe spline lisse passant par les solutions
+    - Zone faisable verte ombree (en dessous de la courbe)
+    - 3 points contextuels :
+        * Actuel       (coral)
+        * Optimal      (or, NSGA-II Compromis)
+        * Reference    (vert)
+    - Axe Y inverse (kWh/t bas = mieux, donc en haut visuellement)
     """
-    sols_sorted = sorted(pareto_solutions, key=lambda s: s['Z1_production_t_jour'])
+    sols_sorted = sorted(pareto_solutions,
+                          key=lambda s: s['Z1_production_t_jour'])
     Z1 = [s['Z1_production_t_jour'] for s in sols_sorted]
     Z2 = [s['Z2_SEC_kWh_tonne'] for s in sols_sorted]
 
     fig = go.Figure()
 
-    # Zone d'amelioration ombree (hull convex)
-    if Z1 and Z2:
+    # ─── Zone faisable verte ombree ───
+    # Polygone : sous la courbe Pareto (region atteignable)
+    # Avec Y inverse : la zone s'etend de la courbe vers le BAS de l'axe
+    # (= valeurs Z2 plus elevees), qui visuellement est en bas de l'ecran.
+    if len(Z1) >= 2:
+        # Etendre legerement les bords pour un meilleur rendu
+        x_poly = ([Z1[0]] + Z1 + [Z1[-1]])
+        y_max = max(Z2) * 1.15
+        y_poly = ([y_max] + Z2 + [y_max])
         fig.add_trace(go.Scatter(
-            x=Z1 + [max(Z1), min(Z1)],
-            y=Z2 + [min(Z2), min(Z2)],
+            x=x_poly, y=y_poly,
             fill="toself",
-            fillcolor="rgba(46,174,127,0.10)",
+            fillcolor="rgba(46,174,127,0.12)",
             line=dict(width=0),
             showlegend=False,
             hoverinfo="skip",
+            name="Zone faisable",
         ))
 
-    # Ligne du front (pointille vert)
+    # ─── Courbe spline du front ───
     fig.add_trace(go.Scatter(
         x=Z1, y=Z2,
         mode="lines+markers",
-        line=dict(color=COLORS["mint-deep"], width=2, dash="dash"),
-        marker=dict(size=8, color="white",
-                    line=dict(color=COLORS["mint-deep"], width=2)),
+        line=dict(color=COLORS["mint-deep"], width=2.5,
+                  dash="dot", shape="spline", smoothing=1.0),
+        marker=dict(size=10, color="white",
+                    line=dict(color=COLORS["mint-deep"], width=2.5)),
         name="Front de Pareto",
-        hovertemplate="Production=%{x:.2f} t/j<br>SEC=%{y:.2f} kWh/t<extra></extra>",
+        hovertemplate=("<b>Solution Pareto</b><br>"
+                        "Production : %{x:.2f} t/j<br>"
+                        "SEC : %{y:.0f} kWh/t<extra></extra>"),
     ))
 
-    def _named_point(z1, z2, label, color, ypos="top"):
+    def _named_point(z1, z2, label, color, x_offset=0, y_offset=-30):
+        """Ajoute un point + une etiquette avec fleche pointant vers lui."""
         fig.add_trace(go.Scatter(
             x=[z1], y=[z2],
             mode="markers",
-            marker=dict(size=18, color=color,
-                        line=dict(width=2.5, color="white")),
+            marker=dict(size=22, color=color,
+                        line=dict(width=3, color="white")),
             showlegend=False,
-            hovertemplate=f"<b>{label}</b><br>%{{x:.2f}} t/j<br>%{{y:.0f}} kWh/t<extra></extra>",
+            hovertemplate=(f"<b>{label}</b><br>"
+                            f"%{{x:.2f}} t/j<br>"
+                            f"%{{y:.0f}} kWh/t<extra></extra>"),
         ))
         fig.add_annotation(
             x=z1, y=z2, text=f"<b>{label}</b>",
-            showarrow=False,
-            yshift=20 if ypos == "top" else -20,
+            showarrow=True, arrowhead=0, arrowsize=1, arrowwidth=2,
+            arrowcolor=color,
+            ax=x_offset, ay=y_offset,
             bgcolor=color,
             bordercolor="white",
             borderwidth=2,
-            borderpad=5,
+            borderpad=6,
             font=dict(family="JetBrains Mono", size=11, color="white"),
         )
 
-    # Optimal (compromis sur le front)
+    # Reference constructeur (en bas-droit, "cible")
+    if point_reference:
+        _named_point(point_reference.get('Z1', 25.0),
+                      point_reference.get('Z2', 250.0),
+                      "Réf. constr.", COLORS["mint-deep"],
+                      x_offset=40, y_offset=-25)
+
+    # Optimal (compromis NSGA-II sur le front)
     if points_remarquables:
         compromis = points_remarquables.get("compromis")
         if compromis:
             _named_point(compromis['Z1_production_t_jour'],
                           compromis['Z2_SEC_kWh_tonne'],
-                          "Optimal", COLORS["gold"])
+                          "Optimal", COLORS["gold"],
+                          x_offset=0, y_offset=-40)
 
-    # Actuel (situation reelle)
+    # Actuel (point baseline reel)
     if point_actuel:
         _named_point(point_actuel.get('Z1', 18.0),
                       point_actuel.get('Z2', 320.0),
-                      "Actuel", COLORS["coral"], ypos="bottom")
+                      "Actuel", COLORS["coral"],
+                      x_offset=-30, y_offset=30)
 
-    # Reference constructeur
-    if point_reference:
-        _named_point(point_reference.get('Z1', 25.0),
-                      point_reference.get('Z2', 250.0),
-                      "Réf. constr.", COLORS["mint-deep"])
+    # Annotation flottante : direction d'amelioration
+    if len(Z1) >= 2:
+        x_mid = (min(Z1) + max(Z1)) / 2
+        y_mid = (min(Z2) + max(Z2)) / 2
+        fig.add_annotation(
+            x=x_mid, y=y_mid,
+            text="↗ Amélioration",
+            showarrow=False,
+            font=dict(family="Inter", size=11,
+                      color=COLORS["mint-deep"]),
+            opacity=0.6,
+        )
 
     fig.update_xaxes(title="Production journalière (t/jour)")
     fig.update_yaxes(title="Consommation énergétique (kWh/tonne)",
                       autorange="reversed")
-    return _apply_theme(fig, height=420, show_legend=False)
+    return _apply_theme(fig, height=440, show_legend=False)
 
 
 # ═══════════════════════════════════════════════════════════════
