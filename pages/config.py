@@ -534,6 +534,165 @@ def apply_latreca_preset(n_clicks, current):
             new_store)
 
 
+# ════════════════════════════════════════════════════════════════
+# Trois autres presets : Conditions actuelles / Reference / Reset
+# ════════════════════════════════════════════════════════════════
+
+# Preset "Conditions actuelles" : scenario degrade fin-de-cycle
+# (illustre une situation pire que LATRECA Reel pour montrer
+# l'utilite du diagnostic et de l'optimisation)
+CURRENT_PRESET = {
+    "K": 335.0, "n": 0.50,
+    "d_0": 5.00, "d_f": 1.78, "n_passes": 9,
+    "alpha_uniforme": 8.0,
+    "alphas": [8.0] * 9,
+    "diametres_reels": LATRECA_DIAMETRES,
+    "v_f": 1.2,                        # vitesse rabaissee (bas du range terrain)
+    "T_ambient_C": 28,                 # atelier plus chaud (saison)
+    "T_shift_h": 8, "eta_OEE": 0.55,   # OEE encore plus faible
+    "eta_cooling": 0.30,               # refroidissement degrade
+    "lubricant_key": "huile_minerale_latreca",
+    "mu_0": 0.055, "beta": 0.40,
+    "gamma": 4.5e-6, "Q_lub": 65000.0, # vieillissement encore + fort
+    "age_lubrifiant_jours": 170,       # presque fin de cycle 6 mois
+    "_preset_actif": "current_degrade",
+}
+
+
+# Preset "Reference constructeur" : conditions nominales Forges Degilly
+# (la cible a atteindre - parametres optimaux d'origine)
+CONSTRUCTOR_PRESET = {
+    "K": 335.0, "n": 0.50,
+    "d_0": 5.00, "d_f": 1.78, "n_passes": 9,
+    "alpha_uniforme": 8.0,
+    "alphas": [8.0] * 9,
+    "diametres_reels": LATRECA_DIAMETRES,
+    "v_f": 5.0,                          # vitesse nominale constructeur
+    "T_ambient_C": 25,
+    "T_shift_h": 8, "eta_OEE": 0.85,     # OEE optimal
+    "eta_cooling": 0.80,                 # refroidissement nominal
+    "lubricant_key": "savon_calcique",   # lubrifiant constructeur initial
+    "mu_0": 0.060, "beta": 0.30,
+    "gamma": 1.5e-6, "Q_lub": 65000.0,
+    "age_lubrifiant_jours": 0,           # lub neuf
+    "_preset_actif": "constructor",
+}
+
+
+# Preset par defaut (DEFAULT_CONFIG du app.py)
+DEFAULT_PRESET = {
+    "K": 335.0, "n": 0.50,
+    "d_0": 8.0, "d_f": 2.0, "n_passes": 9,
+    "alpha_uniforme": 6.0,
+    "alphas": [6.0] * 9,
+    "v_f": 15.0, "T_ambient_C": 25,
+    "T_shift_h": 8.0, "eta_OEE": 0.75,
+    "eta_cooling": 0.6,
+    "lubricant_key": "savon_calcique",
+    "mu_0": 0.060, "beta": 0.30, "gamma": 1.5e-6,
+    "Q_lub": 65000.0,
+    "age_lubrifiant_jours": 30,
+    "_preset_actif": None,
+}
+
+
+def _apply_preset(preset, current_store):
+    """
+    Construit la liste des 14 outputs (13 sliders + nouveau store)
+    a partir d'un dict preset.
+    """
+    new_store = (current_store or {}).copy()
+    new_store.update({
+        "K": preset["K"], "n": preset["n"],
+        "d_0": preset["d_0"], "d_f": preset["d_f"],
+        "n_passes": preset["n_passes"],
+        "alpha_uniforme": preset["alpha_uniforme"],
+        "alphas": preset["alphas"],
+        "v_f": preset["v_f"], "T_ambient_C": preset["T_ambient_C"],
+        "T_shift_h": preset["T_shift_h"], "eta_OEE": preset["eta_OEE"],
+        "eta_cooling": preset["eta_cooling"],
+        "lubricant_key": preset["lubricant_key"],
+        "mu_0": preset["mu_0"], "beta": preset["beta"],
+        "gamma": preset["gamma"], "Q_lub": preset["Q_lub"],
+        "age_lubrifiant_jours": preset["age_lubrifiant_jours"],
+        "_preset_actif": preset.get("_preset_actif"),
+    })
+    # diametres_reels : present si fourni, sinon nettoye
+    if "diametres_reels" in preset:
+        new_store["diametres_reels"] = preset["diametres_reels"]
+    else:
+        new_store.pop("diametres_reels", None)
+
+    return (preset["K"], preset["n"],
+            preset["d_0"], preset["d_f"], preset["n_passes"],
+            preset["alpha_uniforme"],
+            preset["v_f"], preset["T_ambient_C"], preset["T_shift_h"],
+            preset["eta_OEE"], preset["eta_cooling"],
+            preset["lubricant_key"],
+            preset["age_lubrifiant_jours"],
+            new_store)
+
+
+# Sortie commune pour les 3 callbacks ci-dessous
+_PRESET_OUTPUTS = [
+    Output("slider-K", "value", allow_duplicate=True),
+    Output("slider-n", "value", allow_duplicate=True),
+    Output("slider-d0", "value", allow_duplicate=True),
+    Output("slider-df", "value", allow_duplicate=True),
+    Output("slider-passes", "value", allow_duplicate=True),
+    Output("slider-alpha", "value", allow_duplicate=True),
+    Output("slider-vf", "value", allow_duplicate=True),
+    Output("slider-Tamb", "value", allow_duplicate=True),
+    Output("slider-shift", "value", allow_duplicate=True),
+    Output("slider-oee", "value", allow_duplicate=True),
+    Output("slider-cooling", "value", allow_duplicate=True),
+    Output("dropdown-lubricant", "value", allow_duplicate=True),
+    Output("slider-age", "value", allow_duplicate=True),
+    Output("config-store", "data", allow_duplicate=True),
+]
+
+
+@callback(
+    _PRESET_OUTPUTS,
+    Input("btn-preset-current", "n_clicks"),
+    State("config-store", "data"),
+    prevent_initial_call=True,
+)
+def apply_current_preset(n_clicks, current):
+    """Applique 'Conditions actuelles' (scenario degrade fin de cycle)."""
+    if not n_clicks:
+        return (dash.no_update,) * 14
+    return _apply_preset(CURRENT_PRESET, current)
+
+
+@callback(
+    _PRESET_OUTPUTS,
+    Input("btn-preset-constructor", "n_clicks"),
+    State("config-store", "data"),
+    prevent_initial_call=True,
+)
+def apply_constructor_preset(n_clicks, current):
+    """Applique 'Reference constructeur' (Forges Degilly nominal)."""
+    if not n_clicks:
+        return (dash.no_update,) * 14
+    return _apply_preset(CONSTRUCTOR_PRESET, current)
+
+
+@callback(
+    _PRESET_OUTPUTS,
+    Input("btn-preset-reset", "n_clicks"),
+    State("config-store", "data"),
+    prevent_initial_call=True,
+)
+def apply_reset_preset(n_clicks, current):
+    """Reinitialise aux valeurs par defaut DEFAULT_CONFIG."""
+    if not n_clicks:
+        return (dash.no_update,) * 14
+    # Reset complet : on n'herite pas de l'ancien store (efface
+    # diametres_reels et autres cles non-preset)
+    return _apply_preset(DEFAULT_PRESET, {})
+
+
 # ════ Sliders → display value ════
 for sid, fmt in [
     ("slider-K", lambda v: f"{v:.0f}"),
