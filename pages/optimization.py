@@ -12,6 +12,7 @@ from components.charts import (pareto_front, scenarios_comparison,
 from components.icons import icon
 from components.topbar import topbar
 from core.optimizer import lancer_optimisation, identifier_points_caracteristiques
+from core.coupled_solver import simuler_scenario
 
 
 dash.register_page(__name__, path="/optimization", name="Module Optimisation", order=7)
@@ -205,6 +206,32 @@ def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
         'mu_critique_factor': float(c_mufac) if c_mufac is not None else 1.50,
     }
 
+    # ─── BASELINE : simuler la config courante AVANT NSGA-II ───
+    # Permet a l'utilisateur de voir l'amelioration reelle apres optimisation.
+    baseline = None
+    try:
+        baseline_params = {
+            **parametres_fixes,
+            'v_f': float(config.get('v_f', 15.0)),
+            'mu_0': float(config.get('mu_0', 0.060)),
+            'alphas': config.get('alphas', [6.0] * 9),
+            'diametres_reels': config.get('diametres_reels'),
+        }
+        r0 = simuler_scenario(baseline_params)
+        baseline = {
+            'Z1': float(r0['KPIs']['Z1_production_t_jour']),
+            'Z2': float(r0['KPIs']['Z2_SEC_kWh_tonne']),
+            'T_max_C': float(r0['KPIs']['T_max_C']),
+            'P_kW': float(r0['KPIs']['P_totale_kW']),
+            'F_max_N': float(r0['KPIs']['F_max_N']),
+            'mu_max': float(r0['KPIs']['mu_max']),
+            'v_f': float(baseline_params['v_f']),
+            'mu_0': float(baseline_params['mu_0']),
+            'tout_ok': bool(r0['securite']['tout_ok']),
+        }
+    except Exception:
+        baseline = None
+
     try:
         resultat = lancer_optimisation(
             parametres_fixes,
@@ -223,9 +250,10 @@ def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
             "eco": points['eco'],
             "compromis": points['compromis'],
             "history": resultat.get('history'),
+            "baseline": baseline,
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "baseline": baseline}
 
 
 @callback(
@@ -256,8 +284,91 @@ def afficher_resultats(data):
     eco = data["eco"]
     compromis = data["compromis"]
     solutions = data["solutions"]
+    baseline = data.get("baseline")
 
-    # KPIs des 3 points
+    # ─── Bloc BASELINE → OPTIMISE (Avant / Apres) ───
+    avant_apres_section = []
+    if baseline is not None:
+        b_z1 = baseline['Z1']
+        b_z2 = baseline['Z2']
+        c_z1 = compromis['Z1_production_t_jour']
+        c_z2 = compromis['Z2_SEC_kWh_tonne']
+
+        gain_z1_pct = ((c_z1 - b_z1) / b_z1 * 100) if b_z1 > 0 else 0
+        gain_z2_pct = ((b_z2 - c_z2) / b_z2 * 100) if b_z2 > 0 else 0
+
+        # KPI cards Avant/Apres
+        avant_apres_kpis = html.Div(
+            className="kpi-grid",
+            style={"margin-top": "20px"},
+            children=[
+                kpi_card("info", "AVANT · Production",
+                         f"{b_z1:.2f}", unit=" t/j",
+                         trend="config courante", trend_type="flat",
+                         footer=f"v_f = {baseline['v_f']:.1f} m/s · "
+                                f"μ₀ = {baseline['mu_0']:.3f}"),
+                kpi_card("trend-up", "APRÈS · Production",
+                         f"{c_z1:.2f}", unit=" t/j",
+                         trend=f"+{gain_z1_pct:.0f}%" if gain_z1_pct >= 0
+                               else f"{gain_z1_pct:.0f}%",
+                         trend_type="up" if gain_z1_pct > 0 else "down",
+                         footer="scénario Compromis",
+                         dark=True),
+                kpi_card("info", "AVANT · Consommation",
+                         f"{b_z2:.0f}", unit=" kWh/t",
+                         trend="config courante", trend_type="flat",
+                         footer=f"T_max = {baseline['T_max_C']:.0f} °C"),
+                kpi_card("trend-down", "APRÈS · Consommation",
+                         f"{c_z2:.0f}", unit=" kWh/t",
+                         trend=f"-{gain_z2_pct:.0f}%" if gain_z2_pct >= 0
+                               else f"+{abs(gain_z2_pct):.0f}%",
+                         trend_type="down" if gain_z2_pct > 0 else "up",
+                         footer="scénario Compromis"),
+            ],
+        )
+
+        # Banniere de synthese
+        if gain_z1_pct > 5 or gain_z2_pct > 5:
+            banner = alert(
+                "success",
+                f"Optimisation efficace : +{gain_z1_pct:.0f}% production · "
+                f"-{gain_z2_pct:.0f}% consommation",
+                f"En passant de votre configuration actuelle "
+                f"({b_z1:.2f} t/j, {b_z2:.0f} kWh/t) au scénario Compromis "
+                f"NSGA-II ({c_z1:.2f} t/j, {c_z2:.0f} kWh/t), vous gagnez "
+                f"{c_z1 - b_z1:+.2f} t/jour de production tout en "
+                f"économisant {b_z2 - c_z2:+.0f} kWh/tonne d'énergie.",
+                icon_name="check",
+            )
+        elif gain_z1_pct < -2:
+            banner = alert(
+                "warning",
+                "Optimisation contrainte par les seuils",
+                f"Le compromis NSGA-II ({c_z1:.2f} t/j) reste sous votre "
+                f"baseline ({b_z1:.2f} t/j). Cela signifie que vos "
+                f"contraintes de sécurité actuelles forcent un ralentissement. "
+                f"Relâchez T_max ou augmentez η_cooling pour explorer un "
+                f"espace plus permissif.",
+                icon_name="alert",
+            )
+        else:
+            banner = alert(
+                "neutral",
+                "Marge d'amélioration limitée",
+                "La configuration courante est déjà proche de l'optimum "
+                "Pareto. Modifiez les paramètres de configuration pour "
+                "tester d'autres scénarios.",
+                icon_name="info",
+            )
+
+        avant_apres_section = [
+            section_title("Avant / Après optimisation",
+                          meta="comparaison config courante vs NSGA-II Compromis"),
+            avant_apres_kpis,
+            banner,
+        ]
+
+    # ─── KPIs des 3 scenarios Pareto ───
     kpis = [
         kpi_card("trend-up", "Performance",
                  f"{boost['Z1_production_t_jour']:.1f}", unit=" t/j",
@@ -279,17 +390,18 @@ def afficher_resultats(data):
                  footer=f"Calcul : {data['temps']:.1f} s"),
     ]
 
-    # Front de Pareto avec 3 reperes contextuels
+    # ─── Front de Pareto avec le VRAI point baseline ───
     points_remarquables = {
         "boost": boost,
         "compromis": compromis,
         "eco": eco,
     }
+    pt_actuel = ({"Z1": baseline['Z1'], "Z2": baseline['Z2']}
+                 if baseline else None)
     fig_pareto = pareto_front(
         solutions,
         points_remarquables,
-        point_actuel={"Z1": eco['Z1_production_t_jour'] * 0.8,
-                       "Z2": boost['Z2_SEC_kWh_tonne'] * 1.1},
+        point_actuel=pt_actuel,
         point_reference={"Z1": 25.0, "Z2": 250.0},
     )
 
@@ -304,8 +416,19 @@ def afficher_resultats(data):
     }
     fig_scen = scenarios_comparison(scenarios)
 
-    # Tableau des configurations recommandées
+    # Tableau des configurations recommandées (avec ligne BASELINE en tete)
     table_data = []
+    if baseline is not None:
+        # Ligne baseline (config courante de l'utilisateur)
+        # Note : pas d'angle moyen car les alphas du store sont uniformes
+        table_data.append({
+            "Scénario": "● Baseline (votre config)",
+            "Production (t/j)": f"{baseline['Z1']:.2f}",
+            "Consommation (kWh/t)": f"{baseline['Z2']:.1f}",
+            "Vitesse (m/s)": f"{baseline['v_f']:.2f}",
+            "μ initial": f"{baseline['mu_0']:.4f}",
+            "Angle moyen (°)": "—",
+        })
     for nom, point in [("Performance", boost), ("Compromis", compromis),
                         ("Économie", eco)]:
         table_data.append({
@@ -333,15 +456,35 @@ def afficher_resultats(data):
                       "marginBottom": "16px"},
     )
 
-    rec = recommendation_box(
-        "Recommandation stratégique",
-        f"Le scénario Compromis offre {compromis['Z1_production_t_jour']:.1f} t/j "
-        f"avec une consommation de {compromis['Z2_SEC_kWh_tonne']:.0f} kWh/t. "
-        f"Pour maximiser la production, le scénario Performance permet d'atteindre "
-        f"{boost['Z1_production_t_jour']:.1f} t/j. "
-        f"Pour minimiser les coûts énergétiques, choisissez le scénario Économie "
-        f"({eco['Z2_SEC_kWh_tonne']:.0f} kWh/t)."
-    )
+    # Recommandation reformulee avec le gain reel vs baseline
+    if baseline is not None and baseline['Z1'] > 0:
+        gain_perf = ((boost['Z1_production_t_jour'] - baseline['Z1'])
+                      / baseline['Z1'] * 100)
+        gain_eco = ((baseline['Z2'] - eco['Z2_SEC_kWh_tonne'])
+                     / baseline['Z2'] * 100) if baseline['Z2'] > 0 else 0
+        gain_compr = ((compromis['Z1_production_t_jour'] - baseline['Z1'])
+                       / baseline['Z1'] * 100)
+        rec_text = (
+            f"À partir de votre baseline ({baseline['Z1']:.2f} t/j, "
+            f"{baseline['Z2']:.0f} kWh/t), NSGA-II propose 3 leviers : "
+            f"(1) Performance → {boost['Z1_production_t_jour']:.1f} t/j "
+            f"({gain_perf:+.0f}% production), "
+            f"(2) Compromis → {compromis['Z1_production_t_jour']:.1f} t/j "
+            f"({gain_compr:+.0f}%) avec un bon équilibre énergétique, "
+            f"(3) Économie → {eco['Z2_SEC_kWh_tonne']:.0f} kWh/t "
+            f"({gain_eco:+.0f}% consommation) si l'énergie est prioritaire."
+        )
+    else:
+        rec_text = (
+            f"Le scénario Compromis offre "
+            f"{compromis['Z1_production_t_jour']:.1f} t/j avec une "
+            f"consommation de {compromis['Z2_SEC_kWh_tonne']:.0f} kWh/t. "
+            f"Pour maximiser la production, le scénario Performance permet "
+            f"d'atteindre {boost['Z1_production_t_jour']:.1f} t/j. "
+            f"Pour minimiser les coûts énergétiques, choisissez Économie "
+            f"({eco['Z2_SEC_kWh_tonne']:.0f} kWh/t)."
+        )
+    rec = recommendation_box("Recommandation stratégique", rec_text)
 
     # Graphique de convergence (si l'historique est disponible)
     history = data.get("history")
@@ -367,10 +510,16 @@ def afficher_resultats(data):
         ]
 
     return html.Div([
-        html.Div(className="kpi-grid", children=kpis,
-                  style={"margin-top": "20px"}),
+        # En haut : Avant / Apres optimisation
+        *avant_apres_section,
 
-        section_title("Front de Pareto", meta=f"{data['n_solutions']} solutions"),
+        # Puis les 3 scenarios Pareto
+        section_title("Scénarios Pareto identifiés",
+                       meta=f"{data['n_solutions']} solutions"),
+        html.Div(className="kpi-grid", children=kpis),
+
+        section_title("Front de Pareto",
+                       meta=f"{data['n_solutions']} solutions"),
         chart_card("Configurations optimales (production vs consommation)",
                     dcc.Graph(figure=fig_pareto,
                               config={"displayModeBar": False})),
@@ -382,7 +531,8 @@ def afficher_resultats(data):
                     dcc.Graph(figure=fig_scen,
                               config={"displayModeBar": False})),
 
-        section_title("Configurations recommandées"),
+        section_title("Configurations recommandées",
+                       meta="baseline + 3 scénarios Pareto"),
         table,
 
         rec,
