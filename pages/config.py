@@ -469,7 +469,14 @@ LATRECA_PRESET = {
     # Conditions operatoires (deduites)
     "v_f": 1.5, "T_ambient_C": 25,
     "T_shift_h": 8, "eta_OEE": 0.65,
-    "eta_cooling": 0.40,  # ΔT eau = 2°C → refroidissement faible
+    # Refroidissement inter-passes (cabestans + bain lubrifiant)
+    "eta_cooling": 0.85,
+    # f_thermique : fraction de chaleur retenue par le fil pendant
+    # le passage (trefilage humide LATRECA -> 30 % retenu, 70 % evacué
+    # par le lubrifiant et l'eau de refroidissement).
+    # Sans ce facteur, le modele adiabatique pur predit T_max ~150°C alors
+    # que la mesure terrain donne T_max 35-45°C.
+    "f_thermique": 0.30,
     # Lubrifiant : huile minerale non filtree
     "lubricant_key": "huile_minerale_latreca",
     "mu_0": 0.055, "beta": 0.40, "gamma": 3.5e-6,
@@ -520,6 +527,7 @@ def apply_latreca_preset(n_clicks, current):
         "v_f": p["v_f"], "T_ambient_C": p["T_ambient_C"],
         "T_shift_h": p["T_shift_h"], "eta_OEE": p["eta_OEE"],
         "eta_cooling": p["eta_cooling"],
+        "f_thermique": p.get("f_thermique", 0.30),
         "lubricant_key": p["lubricant_key"],
         "mu_0": p["mu_0"], "beta": p["beta"],
         "gamma": p["gamma"], "Q_lub": p["Q_lub"],
@@ -550,7 +558,8 @@ CURRENT_PRESET = {
     "v_f": 1.2,                        # vitesse rabaissee (bas du range terrain)
     "T_ambient_C": 28,                 # atelier plus chaud (saison)
     "T_shift_h": 8, "eta_OEE": 0.55,   # OEE encore plus faible
-    "eta_cooling": 0.30,               # refroidissement degrade
+    "eta_cooling": 0.75,               # refroidissement degrade vs LATRECA
+    "f_thermique": 0.40,               # bain en fin de vie -> dilution moindre
     "lubricant_key": "huile_minerale_latreca",
     "mu_0": 0.055, "beta": 0.40,
     "gamma": 4.5e-6, "Q_lub": 65000.0, # vieillissement encore + fort
@@ -570,7 +579,8 @@ CONSTRUCTOR_PRESET = {
     "v_f": 5.0,                          # vitesse nominale constructeur
     "T_ambient_C": 25,
     "T_shift_h": 8, "eta_OEE": 0.85,     # OEE optimal
-    "eta_cooling": 0.80,                 # refroidissement nominal
+    "eta_cooling": 0.90,                 # refroidissement nominal optimal
+    "f_thermique": 0.25,                 # bain neuf, dilution maximale
     "lubricant_key": "savon_calcique",   # lubrifiant constructeur initial
     "mu_0": 0.060, "beta": 0.30,
     "gamma": 1.5e-6, "Q_lub": 65000.0,
@@ -588,6 +598,7 @@ DEFAULT_PRESET = {
     "v_f": 15.0, "T_ambient_C": 25,
     "T_shift_h": 8.0, "eta_OEE": 0.75,
     "eta_cooling": 0.6,
+    "f_thermique": 1.0,                  # adiabatique pur (mode demo)
     "lubricant_key": "savon_calcique",
     "mu_0": 0.060, "beta": 0.30, "gamma": 1.5e-6,
     "Q_lub": 65000.0,
@@ -611,6 +622,7 @@ def _apply_preset(preset, current_store):
         "v_f": preset["v_f"], "T_ambient_C": preset["T_ambient_C"],
         "T_shift_h": preset["T_shift_h"], "eta_OEE": preset["eta_OEE"],
         "eta_cooling": preset["eta_cooling"],
+        "f_thermique": preset.get("f_thermique", 1.0),
         "lubricant_key": preset["lubricant_key"],
         "mu_0": preset["mu_0"], "beta": preset["beta"],
         "gamma": preset["gamma"], "Q_lub": preset["Q_lub"],

@@ -17,6 +17,7 @@ DEFAULT_CONFIG = {
     "alphas": [6.0] * 9,
     "v_f": 15.0, "T_ambient_C": 25.0, "T_shift_h": 8.0, "eta_OEE": 0.75,
     "eta_cooling": 0.6,
+    "f_thermique": 1.0,
     "lubricant_key": "savon_calcique",
     "mu_0": 0.060, "beta": 0.30, "gamma": 1.5e-6, "Q_lub": 65000.0,
     "age_lubrifiant_jours": 30,

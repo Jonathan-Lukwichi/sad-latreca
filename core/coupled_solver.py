@@ -170,6 +170,12 @@ def simuler_scenario(parametres):
     T_ambient = _f('T_ambient_C', MACHINE_DEFAULTS['T_ambient_C'])
     eta_TQ = _f('eta_TQ', THERMAL_PARAMS['eta_TQ'])
     eta_cooling = max(0.0, min(0.95, _f('eta_cooling', 0.6)))
+    # f_thermique : fraction de la chaleur de friction retenue par le fil
+    # (reste va au bain lubrifiant ou a l'eau de refroidissement).
+    # = 1.0 : adiabatique (tout reste dans le fil) -- defaut, rétrocompatible
+    # = 0.3 : tréfilage humide (LATRECA, 70 % de la chaleur va au bain)
+    # = 0.5 : tréfilage semi-sec
+    f_thermique = max(0.05, min(1.0, _f('f_thermique', 1.0)))
     age_lubrifiant_jours = _f('age_lubrifiant_jours', 0)
 
     T_shift = _f('T_shift_h', MACHINE_DEFAULTS['T_shift_h'])
@@ -257,10 +263,14 @@ def simuler_scenario(parametres):
         puissances.append(P)
 
         # ─── Étape 4 : Calculer ΔT ───
+        # ΔT adiabatique de Kim 2001, puis dilution par le bain (f_thermique).
+        # En tréfilage humide, seule une fraction de la chaleur reste dans le
+        # fil (le reste est evacué par le lubrifiant/eau pendant le passage).
         m_dot = calculer_debit_massique(diametres[i + 1], vitesses[i], rho)
-        delta_T = calculer_elevation_temperature(
+        delta_T_adiab = calculer_elevation_temperature(
             F, vitesses[i], m_dot, Cp, eta_TQ
         )
+        delta_T = f_thermique * delta_T_adiab
         delta_T_list.append(delta_T)
 
         # ─── Étape 5 : Mettre à jour T cumulée avec refroidissement inter-passes ───

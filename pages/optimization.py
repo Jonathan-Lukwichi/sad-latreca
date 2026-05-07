@@ -75,10 +75,16 @@ layout = html.Div([
                 html.Label([
                     html.Span("Seuil thermique T_max (tréfilage humide LATRECA)"),
                     html.Span(id="opt-c-tmax-display",
-                              className="control-value", children="140 °C"),
+                              className="control-value", children="60 °C"),
                 ], style={"display": "flex", "justify-content": "space-between"}),
-                dcc.Slider(id="opt-c-tmax", min=20, max=140, value=140, step=5,
-                           tooltip=None),
+                dcc.Slider(
+                    id="opt-c-tmax",
+                    min=30, max=140, value=60, step=5,
+                    marks={30: "30°C", 40: "40°C", 50: "50°C",
+                           60: "60°C", 80: "80°C", 100: "100°C",
+                           140: "140°C"},
+                    tooltip=None,
+                ),
             ]),
             html.Div([
                 html.Label([
@@ -225,6 +231,7 @@ def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
         'T_shift_h': config.get('T_shift_h', 8.0),
         'eta_OEE': config.get('eta_OEE', 0.75),
         'eta_cooling': config.get('eta_cooling', 0.6),
+        'f_thermique': config.get('f_thermique', 1.0),
         # Surcharges des seuils de contraintes (mode expert)
         'T_max_C': float(c_tmax) if c_tmax is not None else 140.0,
         'sigma_safety_factor': float(c_sigma) if c_sigma is not None else 0.60,
@@ -730,6 +737,7 @@ def simuler_scenario_manuel(n_clicks, vf_man, mu0_man, alpha_man,
         'T_shift_h': config.get('T_shift_h', 8.0),
         'eta_OEE': config.get('eta_OEE', 0.75),
         'eta_cooling': config.get('eta_cooling', 0.6),
+        'f_thermique': config.get('f_thermique', 1.0),
         'diametres_reels': config.get('diametres_reels'),
         # Variables manuelles
         'v_f': float(vf_man),

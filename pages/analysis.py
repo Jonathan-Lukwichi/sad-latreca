@@ -298,6 +298,7 @@ def launch_opt_from_analysis(n_clicks, config):
         'T_shift_h': config.get('T_shift_h', 8.0),
         'eta_OEE': config.get('eta_OEE', 0.75),
         'eta_cooling': config.get('eta_cooling', 0.6),
+        'f_thermique': config.get('f_thermique', 1.0),
     }
 
     try:
