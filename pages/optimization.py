@@ -213,7 +213,7 @@ def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
         config = {
             "K": 335.0, "n": 0.50,
             "d_0": 8.0, "d_f": 2.0, "n_passes": 9,
-            "beta": 0.25, "gamma": 1e-6, "Q_lub": 70000.0,
+            "beta": 0.30, "gamma": 6000, "Q_lub": 65000.0,
             "T_ambient_C": 25.0, "age_lubrifiant_jours": 30,
         }
 
@@ -224,7 +224,7 @@ def lancer_opt(n_clicks, config, pop, gen, c_tmax, c_sigma, c_pmot, c_mufac):
         'd_f': config.get('d_f', 2.0),
         'n_passes': int(config.get('n_passes', 9)),
         'beta': config.get('beta', 0.30),
-        'gamma': config.get('gamma', 1.5e-6),
+        'gamma': config.get('gamma', 6000),
         'Q_lub': config.get('Q_lub', 65000.0),
         'T_ambient_C': config.get('T_ambient_C', 25.0),
         'age_lubrifiant_jours': config.get('age_lubrifiant_jours', 30),
@@ -730,7 +730,7 @@ def simuler_scenario_manuel(n_clicks, vf_man, mu0_man, alpha_man,
         'd_f': config.get('d_f', 2.0),
         'n_passes': n_passes,
         'beta': config.get('beta', 0.30),
-        'gamma': config.get('gamma', 1.5e-6),
+        'gamma': config.get('gamma', 6000),
         'Q_lub': config.get('Q_lub', 65000.0),
         'T_ambient_C': config.get('T_ambient_C', 25.0),
         'age_lubrifiant_jours': config.get('age_lubrifiant_jours', 30),

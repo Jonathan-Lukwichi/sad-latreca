@@ -291,7 +291,7 @@ def launch_opt_from_analysis(n_clicks, config):
         'd_f': config.get('d_f', 2.0),
         'n_passes': int(config.get('n_passes', 9)),
         'beta': config.get('beta', 0.30),
-        'gamma': config.get('gamma', 1.5e-6),
+        'gamma': config.get('gamma', 6000),
         'Q_lub': config.get('Q_lub', 65000.0),
         'T_ambient_C': config.get('T_ambient_C', 25.0),
         'age_lubrifiant_jours': config.get('age_lubrifiant_jours', 30),

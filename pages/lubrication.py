@@ -55,16 +55,32 @@ layout = html.Div([
                           "justify-content": "space-between"}),
                 dcc.Slider(id="lub-duree", min=30, max=365, value=60,
                            step=15, tooltip=None),
+                html.Div("Période simulée pour la trajectoire de "
+                          "vieillissement μ(t).",
+                          style={"font-size": "11px", "color": "#8A9690",
+                                 "margin-top": "4px"}),
             ]),
             html.Div([
                 html.Label([
-                    html.Span("Température opérationnelle"),
+                    html.Span("Température du bain lubrifiant"),
                     html.Span(id="temp-display",
-                              className="control-value", children="80°C"),
+                              className="control-value", children="50°C"),
                 ], style={"display": "flex",
                           "justify-content": "space-between"}),
-                dcc.Slider(id="lub-temp", min=25, max=140, value=80,
-                           step=5, tooltip=None),
+                dcc.Slider(
+                    id="lub-temp", min=25, max=140, value=50, step=5,
+                    marks={25: "25°C", 40: "40°C", 50: "50°C",
+                           60: "60°C", 80: "80°C", 100: "100°C",
+                           140: "140°C"},
+                    tooltip=None,
+                ),
+                html.Div(
+                    "Température du bain en service (réchauffé par la "
+                    "friction). Tréfilage humide LATRECA : 40-60 °C "
+                    "typique. À 25 °C aucune dégradation thermique n'est "
+                    "modélisée.",
+                    style={"font-size": "11px", "color": "#8A9690",
+                            "margin-top": "4px"}),
             ]),
         ]),
     ]),

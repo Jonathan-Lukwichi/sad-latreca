@@ -1,9 +1,9 @@
 {
-  "_description": "Base de donnees de 4 lubrifiants pour le tref ilage du cuivre ETP. Parametres CTTD calibres a partir de la litterature.",
+  "_description": "Base de lubrifiants pour le trefilage du cuivre ETP. Parametres CTTD calibres pour un vieillissement realiste (mu atteint 1.5*mu0 en 30-180 jours selon le type, a temperature operationnelle 50 C).",
   "_unites": {
     "mu_0": "adimensionnel",
     "beta": "adimensionnel (sensibilite Arrhenius thermique)",
-    "gamma": "adimensionnel (taux vieillissement)",
+    "gamma": "1/seconde (taux de vieillissement integre, calibre)",
     "Q_lub": "J/mol (energie d'activation degradation)"
   },
 
@@ -12,12 +12,12 @@
     "type": "Savon sec",
     "mu_0": 0.060,
     "beta": 0.30,
-    "gamma": 1.5e-6,
+    "gamma": 6000,
     "Q_lub": 65000.0,
     "duree_vie_jours_estimee": 30,
     "cout_USD_kg": 5.0,
     "disponibilite_RDC": "Tres bonne",
-    "source": "Wright (2024), Metalube UK (2024)"
+    "source": "Wright (2024), Metalube UK (2024) - calibre sur duree 30j"
   },
 
   "savon_sodique": {
@@ -25,12 +25,12 @@
     "type": "Savon sec ameliore",
     "mu_0": 0.050,
     "beta": 0.28,
-    "gamma": 1.2e-6,
+    "gamma": 4000,
     "Q_lub": 70000.0,
     "duree_vie_jours_estimee": 45,
     "cout_USD_kg": 7.0,
     "disponibilite_RDC": "Bonne",
-    "source": "Pates (2025), Metalube UK (2024)"
+    "source": "Pates (2025), Metalube UK (2024) - calibre sur duree 45j"
   },
 
   "huile_synthetique": {
@@ -38,12 +38,12 @@
     "type": "Huile synthetique",
     "mu_0": 0.040,
     "beta": 0.20,
-    "gamma": 8e-7,
+    "gamma": 2000,
     "Q_lub": 80000.0,
     "duree_vie_jours_estimee": 90,
     "cout_USD_kg": 15.0,
     "disponibilite_RDC": "Moyenne",
-    "source": "Lubricool 955 (2025), Multidraw CU SY (2024)"
+    "source": "Lubricool 955 (2025), Multidraw CU SY (2024) - calibre sur duree 90j"
   },
 
   "nano_graphene": {
@@ -51,12 +51,12 @@
     "type": "Nano-additif",
     "mu_0": 0.030,
     "beta": 0.18,
-    "gamma": 5e-7,
+    "gamma": 800,
     "Q_lub": 90000.0,
     "duree_vie_jours_estimee": 180,
     "cout_USD_kg": 50.0,
     "disponibilite_RDC": "Faible (a importer)",
-    "source": "Wang et al. (2025), Wu (2025), Lang et al. (2025)"
+    "source": "Wang et al. (2025), Wu (2025), Lang et al. (2025) - calibre sur duree 180j"
   },
 
   "huile_minerale_latreca": {
@@ -64,11 +64,11 @@
     "type": "Huile minerale sans additifs",
     "mu_0": 0.055,
     "beta": 0.40,
-    "gamma": 3.5e-6,
+    "gamma": 1500,
     "Q_lub": 65000.0,
     "duree_vie_jours_estimee": 120,
     "cout_USD_kg": 4.0,
     "disponibilite_RDC": "Tres bonne",
-    "source": "Fiche de collecte LATRECA (Avril 2026), pas de filtration, sans additifs"
+    "source": "Fiche de collecte LATRECA (Avril 2026), pas de filtration - calibre sur cycle 4 mois"
   }
 }

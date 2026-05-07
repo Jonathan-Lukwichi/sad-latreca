@@ -19,7 +19,7 @@ DEFAULT_CONFIG = {
     "eta_cooling": 0.6,
     "f_thermique": 1.0,
     "lubricant_key": "savon_calcique",
-    "mu_0": 0.060, "beta": 0.30, "gamma": 1.5e-6, "Q_lub": 65000.0,
+    "mu_0": 0.060, "beta": 0.30, "gamma": 6000, "Q_lub": 65000.0,
     "age_lubrifiant_jours": 30,
 }
 

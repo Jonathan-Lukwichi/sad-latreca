@@ -267,8 +267,8 @@ layout = html.Div([
                     "Sensibilité thermique β", precision=2),
         ]),
         html.Div(className="control-row", children=[
-            slider("slider-gamma", 0.1, 5.0, 1.5, 0.1,
-                    "Vitesse de dégradation γ (×10⁻⁶)", precision=1),
+            slider("slider-gamma", 0.5, 10.0, 6.0, 0.1,
+                    "Vitesse de dégradation γ (×10³)", precision=1),
             slider("slider-Qlub", 40000, 120000, 65000, 1000,
                     "Stabilité thermique Q (J/mol)", precision=0),
         ]),
@@ -336,7 +336,8 @@ def update_store(K, n, d0, df, passes, alpha, vf, Tamb, shift, oee, cooling,
         "eta_cooling": cooling if cooling is not None else 0.6,
         "lubricant_key": lub_key,
         "mu_0": mu0, "beta": beta,
-        "gamma": (gamma or 1.5) * 1e-6,
+        # Slider gamma : echelle x10^3 (1.5 sur slider = 1500 dans store)
+        "gamma": (gamma or 6.0) * 1000.0,
         "Q_lub": Qlub,
         "age_lubrifiant_jours": age,
     })
@@ -422,14 +423,18 @@ def step_buttons(plus, minus, current):
     Input("dropdown-lubricant", "value"),
 )
 def update_lubricant_params(lub_key):
-    """Auto-remplit les params CTTD depuis la base de lubrifiants."""
+    """Auto-remplit les params CTTD depuis la base de lubrifiants.
+
+    Conversion : gamma de la base (ex 1500) -> valeur slider (1.5 sur
+    l'echelle x10^3).
+    """
     if lub_key in LUBRICANTS:
         lub = LUBRICANTS[lub_key]
         return (lub.get("mu_0", 0.060),
                 lub.get("beta", 0.30),
-                lub.get("gamma", 1.5e-6) * 1e6,
+                lub.get("gamma", 6000) / 1000.0,
                 lub.get("Q_lub", 65000.0))
-    return (0.060, 0.30, 1.5, 65000)
+    return (0.060, 0.30, 6.0, 65000)
 
 
 @callback(
@@ -479,7 +484,7 @@ LATRECA_PRESET = {
     "f_thermique": 0.30,
     # Lubrifiant : huile minerale non filtree
     "lubricant_key": "huile_minerale_latreca",
-    "mu_0": 0.055, "beta": 0.40, "gamma": 3.5e-6,
+    "mu_0": 0.055, "beta": 0.40, "gamma": 1500,
     "Q_lub": 65000.0,
     "age_lubrifiant_jours": 120,
     # Marqueur preset actif
@@ -562,7 +567,7 @@ CURRENT_PRESET = {
     "f_thermique": 0.40,               # bain en fin de vie -> dilution moindre
     "lubricant_key": "huile_minerale_latreca",
     "mu_0": 0.055, "beta": 0.40,
-    "gamma": 4.5e-6, "Q_lub": 65000.0, # vieillissement encore + fort
+    "gamma": 2200, "Q_lub": 65000.0,   # vieillissement accelere (degrade)
     "age_lubrifiant_jours": 170,       # presque fin de cycle 6 mois
     "_preset_actif": "current_degrade",
 }
@@ -583,7 +588,7 @@ CONSTRUCTOR_PRESET = {
     "f_thermique": 0.25,                 # bain neuf, dilution maximale
     "lubricant_key": "savon_calcique",   # lubrifiant constructeur initial
     "mu_0": 0.060, "beta": 0.30,
-    "gamma": 1.5e-6, "Q_lub": 65000.0,
+    "gamma": 6000, "Q_lub": 65000.0,
     "age_lubrifiant_jours": 0,           # lub neuf
     "_preset_actif": "constructor",
 }
@@ -600,7 +605,7 @@ DEFAULT_PRESET = {
     "eta_cooling": 0.6,
     "f_thermique": 1.0,                  # adiabatique pur (mode demo)
     "lubricant_key": "savon_calcique",
-    "mu_0": 0.060, "beta": 0.30, "gamma": 1.5e-6,
+    "mu_0": 0.060, "beta": 0.30, "gamma": 6000,
     "Q_lub": 65000.0,
     "age_lubrifiant_jours": 30,
     "_preset_actif": None,
