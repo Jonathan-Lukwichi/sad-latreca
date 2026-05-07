@@ -1,110 +1,107 @@
-"""Page 05 - Module Thermique"""
+"""Page 05 - Module Thermique (avec boutons Lancer / Initialiser)"""
 
 import dash
-from dash import html, dcc, Input, Output, callback, dash_table
+from dash import html, dcc, Input, Output, State, callback, dash_table
 
 from components.cards import (
     page_header, section_title, footer, kpi_card,
     chart_card, recommendation_box, alert,
+    model_runner_bar, empty_module_placeholder,
 )
 from components.charts import temperature_profile, delta_t_per_stage
 from components.topbar import topbar
 from core.coupled_solver import simuler_scenario
 
 
-dash.register_page(__name__, path="/thermal", name="Module Thermique", order=5)
+dash.register_page(__name__, path="/thermal",
+                    name="Module Thermique", order=5)
+
+
+LABEL_RUN = "Lancer le thermique"
 
 
 layout = html.Div([
     topbar(["SAD LATRECA", "Modules", "Thermique"]),
 
     page_header("thermometer", "Module Thermique",
-                "Surveillance et prédiction de l'élévation de température · seuil 140°C",
-                badge="MODULE · LIVE", pill="Surveillance active"),
+                "Surveillance et prédiction de l'élévation de température · "
+                "seuil 140°C",
+                badge="MODULE", pill="Surveillance active"),
 
-    html.Div(id="thermal-kpis", className="kpi-grid"),
+    model_runner_bar(
+        LABEL_RUN,
+        btn_run_id="btn-run-thermal",
+        btn_init_id="btn-init-thermal",
+        info="Calcule l'échauffement par passe et la température cumulée "
+              "selon le modèle de Kim, avec dilution thermique f_thermique "
+              "et refroidissement inter-passes η_cooling.",
+    ),
 
-    section_title("Visualisations thermiques", meta="02 graphiques"),
-    html.Div(className="chart-grid-2", children=[
-        chart_card("Profil de température cumulée",
-                   dcc.Graph(id="thermal-chart-profile",
-                             config={"displayModeBar": False})),
-        chart_card("Échauffement par étape (ΔT)",
-                   dcc.Graph(id="thermal-chart-delta",
-                             config={"displayModeBar": False})),
-    ]),
-
-    html.Div(id="thermal-status"),
-
-    section_title("Détail par étape"),
-    html.Div(id="thermal-table"),
-
-    html.Div(id="thermal-recommendation"),
+    html.Div(id="thermal-content",
+              children=empty_module_placeholder(LABEL_RUN)),
 
     footer(),
 ])
 
 
 @callback(
-    [Output("thermal-kpis", "children"),
-     Output("thermal-chart-profile", "figure"),
-     Output("thermal-chart-delta", "figure"),
-     Output("thermal-table", "children"),
-     Output("thermal-status", "children"),
-     Output("thermal-recommendation", "children")],
-    Input("config-store", "data"),
+    Output("thermal-content", "children"),
+    [Input("btn-run-thermal", "n_clicks"),
+     Input("btn-init-thermal", "n_clicks")],
+    State("config-store", "data"),
+    prevent_initial_call=True,
 )
-def update_thermal(store):
-    if not store:
-        store = {}
+def update_thermal(n_run, n_init, store):
+    """Lance le calcul Thermique OU initialise."""
+    triggered = (dash.callback_context.triggered[0]["prop_id"]
+                 if dash.callback_context.triggered else "")
+
+    if triggered.startswith("btn-init-thermal"):
+        return empty_module_placeholder(LABEL_RUN)
+
+    store = store or {}
 
     try:
         resultat = simuler_scenario(store)
 
-        # Extraction sécurisée des données
         T_max = float(resultat['KPIs']['T_max_C'])
         marge = float(resultat['KPIs']['marge_thermique_C'])
         sec = resultat['securite']['C2_thermique']
         delta_T_list = [float(x) for x in resultat['delta_T']]
         delta_T_max = max(delta_T_list) if delta_T_list else 0.0
 
-        # KPIs
         if sec['niveau_risque'] == 'OK':
-            risque_trend = "OK"
-            risque_type = "up"
+            risque_trend, risque_type = "OK", "up"
         elif sec['niveau_risque'] == 'Attention':
-            risque_trend = "vigilance"
-            risque_type = "warning"
+            risque_trend, risque_type = "vigilance", "warning"
         else:
-            risque_trend = "critique"
-            risque_type = "down"
+            risque_trend, risque_type = "critique", "down"
 
         kpis = [
             kpi_card("thermometer", "Température max",
-                     f"{T_max:.0f}", unit="°C",
-                     trend="ligne complète", trend_type="flat",
-                     footer="Atteinte sur la ligne"),
+                      f"{T_max:.0f}", unit="°C",
+                      trend="ligne complète", trend_type="flat",
+                      footer="Atteinte sur la ligne"),
             kpi_card("shield", "Marge thermique",
-                     f"{marge:.0f}", unit="°C",
-                     trend="OK" if marge > 30 else "FAIBLE",
-                     trend_type="up" if marge > 30 else "down",
-                     footer="Avant seuil 140°C",
-                     dark=True),
+                      f"{marge:.0f}", unit="°C",
+                      trend="OK" if marge > 30 else "FAIBLE",
+                      trend_type="up" if marge > 30 else "down",
+                      footer="Avant seuil 140°C",
+                      dark=True),
             kpi_card("alert", "Niveau risque",
-                     sec['niveau_risque'],
-                     trend=risque_trend, trend_type=risque_type,
-                     footer="État global"),
+                      sec['niveau_risque'],
+                      trend=risque_trend, trend_type=risque_type,
+                      footer="État global"),
             kpi_card("zap", "ΔT max par étape",
-                     f"{delta_T_max:.1f}", unit="°C",
-                     trend="échauffement", trend_type="warning",
-                     footer="Pic d'échauffement"),
+                      f"{delta_T_max:.1f}", unit="°C",
+                      trend="échauffement", trend_type="warning",
+                      footer="Pic d'échauffement"),
         ]
 
-        # Graphs
-        fig_profile = temperature_profile(resultat['temperatures'], T_seuil=140.0)
+        fig_profile = temperature_profile(resultat['temperatures'],
+                                            T_seuil=140.0)
         fig_delta = delta_t_per_stage(resultat['delta_T'])
 
-        # Table
         n_passes = len(delta_T_list)
         table_data = []
         for i in range(n_passes):
@@ -122,8 +119,7 @@ def update_thermal(store):
             columns = []
 
         table = dash_table.DataTable(
-            data=table_data,
-            columns=columns,
+            data=table_data, columns=columns,
             style_cell={"textAlign": "center", "fontFamily": "Inter",
                         "fontSize": "12px", "padding": "8px",
                         "border": "1px solid #E5DFCE"},
@@ -132,43 +128,57 @@ def update_thermal(store):
                           "fontWeight": "600", "textTransform": "uppercase",
                           "letterSpacing": "0.08em"},
             style_data_conditional=[{"if": {"row_index": "odd"},
-                                     "backgroundColor": "#FAFAF7"}],
+                                      "backgroundColor": "#FAFAF7"}],
             style_table={"borderRadius": "14px", "overflow": "hidden"},
         )
 
-        # Status
         if T_max > 140:
             status = alert("danger", f"Alerte critique ({T_max:.0f}°C)",
-                           "Risques : dégradation du lubrifiant, perte de qualité, "
-                           "usure accélérée. Réduisez immédiatement la cadence.",
-                           icon_name="alert")
+                            "Risques : dégradation du lubrifiant, perte de "
+                            "qualité, usure accélérée. Réduisez immédiatement "
+                            "la cadence.", icon_name="alert")
         elif T_max > 110:
-            status = alert("warning", f"Vigilance recommandée ({T_max:.0f}°C)",
-                           "Proche du seuil critique de 140°C. Surveillez en continu.",
-                           icon_name="alert")
+            status = alert("warning",
+                            f"Vigilance recommandée ({T_max:.0f}°C)",
+                            "Proche du seuil critique de 140°C. "
+                            "Surveillez en continu.", icon_name="alert")
         else:
-            status = alert("success", f"Fonctionnement nominal ({T_max:.0f}°C)",
-                           "Bien en dessous du seuil critique. Marge confortable.",
-                           icon_name="check")
+            status = alert("success",
+                            f"Fonctionnement nominal ({T_max:.0f}°C)",
+                            "Bien en dessous du seuil critique. Marge "
+                            "confortable.", icon_name="check")
 
-        # Recommandation
         if marge > 30:
             action = "Maintenez les conditions actuelles."
         elif marge > 0:
             action = "Réduisez la vitesse ou améliorez la lubrification."
         else:
-            action = "Action urgente : réduisez immédiatement la cadence."
+            action = ("Action urgente : réduisez immédiatement la "
+                       "cadence.")
 
         rec = recommendation_box(
             "Action recommandée",
-            f"T max : {T_max:.0f}°C · Marge sécurité : {marge:.0f}°C. {action}"
+            f"T max : {T_max:.0f}°C · Marge sécurité : {marge:.0f}°C. "
+            f"{action}"
         )
 
-        return kpis, fig_profile, fig_delta, table, status, rec
+        return html.Div([
+            html.Div(className="kpi-grid", children=kpis),
+            section_title("Visualisations thermiques", meta="02 graphiques"),
+            html.Div(className="chart-grid-2", children=[
+                chart_card("Profil de température cumulée",
+                            dcc.Graph(figure=fig_profile,
+                                      config={"displayModeBar": False})),
+                chart_card("Échauffement par étape (ΔT)",
+                            dcc.Graph(figure=fig_delta,
+                                      config={"displayModeBar": False})),
+            ]),
+            status,
+            section_title("Détail par étape"),
+            table,
+            rec,
+        ])
 
     except Exception as e:
-        # En cas d'erreur n'importe où dans le callback, on affiche une alerte propre
-        return (None, {}, {}, None,
-                alert("danger", "Erreur de calcul thermique",
-                      f"Détail : {str(e)}", icon_name="alert"), None)
-
+        return alert("danger", "Erreur de calcul thermique",
+                      f"Détail : {str(e)}", icon_name="alert")

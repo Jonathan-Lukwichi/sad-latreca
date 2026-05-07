@@ -1,62 +1,71 @@
-"""Page 03 - Module Materiau"""
+"""Page 03 - Module Materiau (avec boutons Lancer / Initialiser)"""
 
 import dash
-from dash import html, dcc, Input, Output, callback, dash_table
+from dash import html, dcc, Input, Output, State, callback, dash_table
 
 from components.cards import (
     page_header, section_title, footer, kpi_card,
     chart_card, recommendation_box,
+    model_runner_bar, empty_module_placeholder,
 )
 from components.charts import hollomon_curve, resistance_per_stage, COLORS
 from components.topbar import topbar
 from core.hollomon import calculer_profil_contraintes
 
 
-dash.register_page(__name__, path="/material", name="Module Matériau", order=3)
+dash.register_page(__name__, path="/material",
+                    name="Module Matériau", order=3)
+
+
+LABEL_RUN = "Lancer le matériau"
 
 
 layout = html.Div([
     topbar(["SAD LATRECA", "Modules", "Matériau"]),
 
     page_header("layers", "Module Matériau",
-                "Comportement et résistance du fil le long de la ligne · Loi de Hollomon",
-                badge="MODULE · LIVE", pill="Cuivre ETP"),
+                "Comportement et résistance du fil le long de la ligne · "
+                "Loi de Hollomon",
+                badge="MODULE", pill="Cuivre ETP"),
 
-    # KPIs
-    html.Div(id="material-kpis", className="kpi-grid"),
+    # Boutons de controle (Lancer / Initialiser)
+    model_runner_bar(
+        LABEL_RUN,
+        btn_run_id="btn-run-material",
+        btn_init_id="btn-init-material",
+        info="Calcule la résistance, la déformation et le durcissement "
+              "du cuivre ETP sur les 9 passes selon la loi de Hollomon.",
+    ),
 
-    # Charts en grille 2x1
-    section_title("Visualisations", meta="02 graphiques"),
-    html.Div(className="chart-grid-2", children=[
-        chart_card("Comportement du matériau",
-                   dcc.Graph(id="material-chart-curve",
-                             config={"displayModeBar": False})),
-        chart_card("Résistance par étape",
-                   dcc.Graph(id="material-chart-bars",
-                             config={"displayModeBar": False})),
-    ]),
-
-    # Tableau
-    section_title("Évolution étape par étape"),
-    html.Div(id="material-table"),
-
-    # Recommandation
-    html.Div(id="material-recommendation"),
+    # Conteneur unique pour les resultats (vide au depart)
+    html.Div(id="material-content",
+              children=empty_module_placeholder(LABEL_RUN)),
 
     footer(),
 ])
 
 
-# ════ Callbacks ════
+# ════════════════════════════════════════════════════════════════
+# Callback : Lancer / Initialiser
+# ════════════════════════════════════════════════════════════════
+
 @callback(
-    [Output("material-kpis", "children"),
-     Output("material-chart-curve", "figure"),
-     Output("material-chart-bars", "figure"),
-     Output("material-table", "children"),
-     Output("material-recommendation", "children")],
-    Input("config-store", "data"),
+    Output("material-content", "children"),
+    [Input("btn-run-material", "n_clicks"),
+     Input("btn-init-material", "n_clicks")],
+    State("config-store", "data"),
+    prevent_initial_call=True,
 )
-def update_material(store):
+def update_material(n_run, n_init, store):
+    """Lance le calcul Materiau OU initialise (efface les resultats)."""
+    triggered = (dash.callback_context.triggered[0]["prop_id"]
+                 if dash.callback_context.triggered else "")
+
+    # Initialisation : on efface les resultats
+    if triggered.startswith("btn-init-material"):
+        return empty_module_placeholder(LABEL_RUN)
+
+    # Lancer le modele
     if not store:
         store = {"K": 335, "n": 0.5, "d_0": 8.0, "d_f": 2.0, "n_passes": 9}
 
@@ -75,22 +84,22 @@ def update_material(store):
     # KPIs
     kpis = [
         kpi_card("zap", "Résistance finale",
-                 f"{sigma_finale:.0f}", unit=" MPa",
-                 trend="optimal", trend_type="up",
-                 footer=f"Durcissement ×{durcissement:.1f}"),
+                  f"{sigma_finale:.0f}", unit=" MPa",
+                  trend="optimal", trend_type="up",
+                  footer=f"Durcissement ×{durcissement:.1f}"),
         kpi_card("chart", "Déformation totale",
-                 f"{eps_finale:.2f}",
-                 trend="cumulée", trend_type="flat",
-                 footer=f"Sur {n_passes} étapes",
-                 dark=True),
+                  f"{eps_finale:.2f}",
+                  trend="cumulée", trend_type="flat",
+                  footer=f"Sur {n_passes} étapes",
+                  dark=True),
         kpi_card("activity", "Facteur durcissement",
-                 f"×{durcissement:.1f}",
-                 trend="multiplication", trend_type="up",
-                 footer="Résistance multipliée"),
+                  f"×{durcissement:.1f}",
+                  trend="multiplication", trend_type="up",
+                  footer="Résistance multipliée"),
         kpi_card("package", "Réduction section",
-                 f"{reduction:.0f}", unit="%",
-                 trend="globale", trend_type="up",
-                 footer=f"De Ø{d_0:.1f} → Ø{d_f:.1f} mm"),
+                  f"{reduction:.0f}", unit="%",
+                  trend="globale", trend_type="up",
+                  footer=f"De Ø{d_0:.1f} → Ø{d_f:.1f} mm"),
     ]
 
     # Graphiques
@@ -134,15 +143,29 @@ def update_material(store):
              "backgroundColor": "#FAFAF7"},
         ],
         style_table={"borderRadius": "14px", "overflow": "hidden",
-                     "border": "1px solid #E5DFCE"},
+                      "border": "1px solid #E5DFCE"},
     )
 
-    # Recommandation
     rec = recommendation_box(
         "Recommandation",
-        f"La résistance finale du matériau est de {sigma_finale:.0f} MPa avec un "
-        f"facteur de durcissement de ×{durcissement:.1f}. Vérifiez que les efforts "
-        f"de production restent dans la zone de sécurité (Module Forces).",
+        f"La résistance finale du matériau est de {sigma_finale:.0f} MPa "
+        f"avec un facteur de durcissement de ×{durcissement:.1f}. "
+        f"Vérifiez que les efforts de production restent dans la zone "
+        f"de sécurité (Module Forces).",
     )
 
-    return kpis, fig_curve, fig_bars, table, rec
+    return html.Div([
+        html.Div(className="kpi-grid", children=kpis),
+        section_title("Visualisations", meta="02 graphiques"),
+        html.Div(className="chart-grid-2", children=[
+            chart_card("Comportement du matériau",
+                        dcc.Graph(figure=fig_curve,
+                                  config={"displayModeBar": False})),
+            chart_card("Résistance par étape",
+                        dcc.Graph(figure=fig_bars,
+                                  config={"displayModeBar": False})),
+        ]),
+        section_title("Évolution étape par étape"),
+        table,
+        rec,
+    ])

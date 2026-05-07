@@ -259,6 +259,92 @@ def control_label(text, value=None):
 # FOOTER
 # ═══════════════════════════════════════════════════════════════
 
+def model_runner_bar(label_run, btn_run_id, btn_init_id, info=None):
+    """
+    Barre de 2 boutons standardisee 'Lancer / Initialiser' pour les
+    pages modules. A placer juste apres page_header().
+
+    Parameters
+    ----------
+    label_run : str
+        Texte du bouton de lancement (ex: "Lancer le matériau")
+    btn_run_id : str
+        ID du bouton de lancement
+    btn_init_id : str
+        ID du bouton d'initialisation
+    info : str, optional
+        Texte d'aide affiche a droite des boutons
+    """
+    return html.Div(
+        style={
+            "display": "flex",
+            "gap": "12px",
+            "align-items": "center",
+            "padding": "16px 18px",
+            "background": "#FFFFFF",
+            "border": "1px solid #E5DFCE",
+            "border-radius": "14px",
+            "margin-top": "12px",
+            "margin-bottom": "16px",
+            "flex-wrap": "wrap",
+        },
+        children=[
+            html.Button(
+                [icon("play"), "  ", label_run],
+                id=btn_run_id, n_clicks=0,
+                className="btn btn-gold",
+                style={"flex-shrink": "0"},
+            ),
+            html.Button(
+                [icon("refresh"), "  Initialiser"],
+                id=btn_init_id, n_clicks=0,
+                className="btn btn-secondary",
+                style={"flex-shrink": "0"},
+            ),
+            html.Div(
+                info or ("Cliquez sur « Lancer » pour exécuter le modèle. "
+                          "« Initialiser » efface les résultats."),
+                style={"color": "#8A9690",
+                       "font-size": "12.5px",
+                       "flex": "1 1 auto",
+                       "min-width": "200px"},
+            ),
+        ],
+    )
+
+
+def empty_module_placeholder(label_run):
+    """
+    Placeholder visible avant que l'utilisateur lance le module.
+
+    Parameters
+    ----------
+    label_run : str
+        Texte du bouton (pour rappeler quoi cliquer)
+    """
+    return html.Div(
+        style={
+            "text-align": "center",
+            "padding": "60px 20px",
+            "color": "#8A9690",
+            "background": "#FAFAF7",
+            "border": "1px dashed #E5DFCE",
+            "border-radius": "14px",
+            "margin-bottom": "16px",
+        },
+        children=[
+            html.Div(icon("info"),
+                     style={"color": "#A38B3E", "margin-bottom": "8px"}),
+            html.Div(f"Cliquez sur « {label_run} » pour calculer ce module.",
+                     style={"font-size": "14px",
+                            "font-weight": "500",
+                            "color": "#0A2A1F"}),
+            html.Div("Aucun résultat affiché tant que le modèle n'est pas lancé.",
+                     style={"font-size": "12px", "margin-top": "6px"}),
+        ],
+    )
+
+
 def footer():
     """Footer minimal."""
     return html.Div(
