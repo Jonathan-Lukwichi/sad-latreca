@@ -454,14 +454,15 @@ def lubricants_comparison(comparaison_resultats):
 def pareto_front(pareto_solutions, points_remarquables=None,
                   point_actuel=None, point_reference=None):
     """
-    Front de Pareto stylise (style maquette Streamlit) avec :
-    - Courbe spline lisse passant par les solutions
-    - Zone faisable verte ombree (en dessous de la courbe)
-    - 3 points contextuels :
-        * Actuel       (coral)
-        * Optimal      (or, NSGA-II Compromis)
-        * Reference    (vert)
-    - Axe Y inverse (kWh/t bas = mieux, donc en haut visuellement)
+    Front de Pareto avec :
+    - Courbe spline lisse passant par les solutions (si >= 3 points)
+    - Zone faisable verte semi-transparente sous la courbe
+    - 3 points contextuels (Actuel, Optimal, Reference) avec etiquettes
+    - Axe Y inverse (Y bas = SEC haut = mauvais, Y haut = SEC bas = bon)
+    - Detection du cas degenere (Pareto en cluster) avec annotation
+
+    Pour eviter les chevauchements, les etiquettes utilisent xanchor /
+    yanchor explicites au lieu d'offsets pixel.
     """
     sols_sorted = sorted(pareto_solutions,
                           key=lambda s: s['Z1_production_t_jour'])
@@ -470,98 +471,131 @@ def pareto_front(pareto_solutions, points_remarquables=None,
 
     fig = go.Figure()
 
-    # ─── Zone faisable verte ombree ───
-    # Polygone : sous la courbe Pareto (region atteignable)
-    # Avec Y inverse : la zone s'etend de la courbe vers le BAS de l'axe
-    # (= valeurs Z2 plus elevees), qui visuellement est en bas de l'ecran.
-    if len(Z1) >= 2:
-        # Etendre legerement les bords pour un meilleur rendu
+    # Detection cluster degenere : si la dispersion est < 5% de la moyenne
+    n_unique = len(set((round(z1, 2), round(z2, 1)) for z1, z2 in zip(Z1, Z2)))
+    is_degenerate = (len(Z1) < 3) or (n_unique < 3) or (
+        len(Z1) >= 2
+        and (max(Z1) - min(Z1)) / (sum(Z1) / len(Z1) + 1e-9) < 0.05
+    )
+
+    # ─── Zone faisable verte ombree (uniquement si front etale) ───
+    if not is_degenerate and len(Z1) >= 2:
         x_poly = ([Z1[0]] + Z1 + [Z1[-1]])
         y_max = max(Z2) * 1.15
         y_poly = ([y_max] + Z2 + [y_max])
         fig.add_trace(go.Scatter(
             x=x_poly, y=y_poly,
             fill="toself",
-            fillcolor="rgba(46,174,127,0.12)",
+            fillcolor="rgba(46,174,127,0.10)",
             line=dict(width=0),
             showlegend=False,
             hoverinfo="skip",
-            name="Zone faisable",
         ))
 
-    # ─── Courbe spline du front ───
+    # ─── Courbe / point du front ───
+    line_shape = "spline" if not is_degenerate else "linear"
     fig.add_trace(go.Scatter(
         x=Z1, y=Z2,
-        mode="lines+markers",
+        mode="lines+markers" if len(Z1) >= 2 else "markers",
         line=dict(color=COLORS["mint-deep"], width=2.5,
-                  dash="dot", shape="spline", smoothing=1.0),
+                  dash="dot", shape=line_shape, smoothing=1.0),
         marker=dict(size=10, color="white",
                     line=dict(color=COLORS["mint-deep"], width=2.5)),
-        name="Front de Pareto",
+        name="Solutions Pareto",
         hovertemplate=("<b>Solution Pareto</b><br>"
                         "Production : %{x:.2f} t/j<br>"
                         "SEC : %{y:.0f} kWh/t<extra></extra>"),
     ))
 
-    def _named_point(z1, z2, label, color, x_offset=0, y_offset=-30):
-        """Ajoute un point + une etiquette avec fleche pointant vers lui."""
+    def _named_point(z1, z2, label, color,
+                      xanchor="left", yanchor="bottom"):
+        """Point + etiquette positionnee proprement par anchors (pas d'offset px)."""
         fig.add_trace(go.Scatter(
             x=[z1], y=[z2],
             mode="markers",
-            marker=dict(size=22, color=color,
-                        line=dict(width=3, color="white")),
+            marker=dict(size=18, color=color,
+                        line=dict(width=2.5, color="white")),
             showlegend=False,
             hovertemplate=(f"<b>{label}</b><br>"
                             f"%{{x:.2f}} t/j<br>"
                             f"%{{y:.0f}} kWh/t<extra></extra>"),
         ))
+        # On utilise une annotation simple sans fleche : positionnee
+        # directement a cote du point grace a xanchor / yanchor.
+        # xshift / yshift en pixels pour eloigner du marker.
+        xshift = 14 if xanchor == "left" else (-14 if xanchor == "right" else 0)
+        yshift = 14 if yanchor == "bottom" else (-14 if yanchor == "top" else 0)
         fig.add_annotation(
             x=z1, y=z2, text=f"<b>{label}</b>",
-            showarrow=True, arrowhead=0, arrowsize=1, arrowwidth=2,
-            arrowcolor=color,
-            ax=x_offset, ay=y_offset,
+            showarrow=False,
+            xanchor=xanchor, yanchor=yanchor,
+            xshift=xshift, yshift=yshift,
             bgcolor=color,
             bordercolor="white",
             borderwidth=2,
-            borderpad=6,
-            font=dict(family="JetBrains Mono", size=11, color="white"),
+            borderpad=5,
+            font=dict(family="JetBrains Mono", size=10.5, color="white"),
         )
 
-    # Reference constructeur (en bas-droit, "cible")
-    if point_reference:
-        _named_point(point_reference.get('Z1', 25.0),
-                      point_reference.get('Z2', 250.0),
-                      "Réf. constr.", COLORS["mint-deep"],
-                      x_offset=40, y_offset=-25)
-
-    # Optimal (compromis NSGA-II sur le front)
+    # Optimal (compromis NSGA-II)
     if points_remarquables:
         compromis = points_remarquables.get("compromis")
         if compromis:
             _named_point(compromis['Z1_production_t_jour'],
                           compromis['Z2_SEC_kWh_tonne'],
                           "Optimal", COLORS["gold"],
-                          x_offset=0, y_offset=-40)
+                          xanchor="left", yanchor="bottom")
 
-    # Actuel (point baseline reel)
+    # Actuel (baseline reel) -- positionne a gauche pour eviter le compromis
     if point_actuel:
-        _named_point(point_actuel.get('Z1', 18.0),
-                      point_actuel.get('Z2', 320.0),
+        _named_point(point_actuel.get('Z1', 0),
+                      point_actuel.get('Z2', 0),
                       "Actuel", COLORS["coral"],
-                      x_offset=-30, y_offset=30)
+                      xanchor="left", yanchor="top")
 
-    # Annotation flottante : direction d'amelioration
-    if len(Z1) >= 2:
-        x_mid = (min(Z1) + max(Z1)) / 2
-        y_mid = (min(Z2) + max(Z2)) / 2
+    # Reference constructeur (uniquement si fournie ET dans la meme echelle)
+    if point_reference:
+        ref_z1 = point_reference.get('Z1', 25.0)
+        ref_z2 = point_reference.get('Z2', 250.0)
+        # On vide la reference si son ordre de grandeur ne matche pas le
+        # front (eviter d'ecraser l'echelle).
+        z2_med = sum(Z2) / max(len(Z2), 1) if Z2 else 0
+        if z2_med > 0 and (ref_z2 < z2_med * 0.3 or ref_z2 > z2_med * 3):
+            point_reference = None
+    if point_reference:
+        _named_point(point_reference.get('Z1', 25.0),
+                      point_reference.get('Z2', 250.0),
+                      "Réf. constr.", COLORS["mint-deep"],
+                      xanchor="right", yanchor="bottom")
+
+    # ─── Annotation pedagogique en cas de cluster degenere ───
+    if is_degenerate and Z1:
         fig.add_annotation(
-            x=x_mid, y=y_mid,
-            text="↗ Amélioration",
+            xref="paper", yref="paper",
+            x=0.98, y=0.02, xanchor="right", yanchor="bottom",
+            text=("ⓘ Front Pareto en cluster : "
+                  "les solutions convergent vers un même optimum.<br>"
+                  "Élargissez les bornes ou relâchez les contraintes "
+                  "pour explorer un éventail plus large."),
             showarrow=False,
-            font=dict(family="Inter", size=11,
-                      color=COLORS["mint-deep"]),
-            opacity=0.6,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor=COLORS["gold"],
+            borderwidth=1,
+            borderpad=8,
+            font=dict(family="Inter", size=10.5,
+                      color=COLORS["ink-soft"]),
+            align="right",
         )
+
+    # Axes : Y inverse (SEC bas = bon = visuellement en haut)
+    # On force un peu de padding pour que les markers ne touchent pas les bords.
+    if Z1:
+        x_pad = max(0.5, (max(Z1) - min(Z1)) * 0.10)
+        x_min = min(Z1) - x_pad
+        if point_actuel:
+            x_min = min(x_min, point_actuel.get('Z1', x_min) - x_pad)
+        x_max = max(Z1) + x_pad
+        fig.update_xaxes(range=[x_min, x_max])
 
     fig.update_xaxes(title="Production journalière (t/jour)")
     fig.update_yaxes(title="Consommation énergétique (kWh/tonne)",

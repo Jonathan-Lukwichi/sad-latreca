@@ -438,11 +438,15 @@ def afficher_resultats(data):
     }
     pt_actuel = ({"Z1": baseline['Z1'], "Z2": baseline['Z2']}
                  if baseline else None)
+    # Pas de reference codee en dur : elle ecrasait l'echelle quand les
+    # ordres de grandeur ne correspondent pas (ex : LATRECA SEC = 30 kWh/t
+    # vs reference mockup = 250 kWh/t). L'utilisateur a deja la baseline
+    # comme repere et le bloc Avant/Apres en haut de page.
     fig_pareto = pareto_front(
         solutions,
         points_remarquables,
         point_actuel=pt_actuel,
-        point_reference={"Z1": 25.0, "Z2": 250.0},
+        point_reference=None,
     )
 
     # Comparaison scénarios
